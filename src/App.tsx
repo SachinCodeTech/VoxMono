@@ -46,7 +46,7 @@ import {
   RotateCcw,
   User as UserIcon
 } from 'lucide-react';
-import { auth, db, signInWithGoogle } from './lib/firebase.ts';
+import { auth, db, signInWithGoogle, getLoginResult } from './lib/firebase.ts';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { 
   collection, 
@@ -68,12 +68,7 @@ import { Reorder } from 'motion/react';
 
 // --- Components ---
 
-const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
-  useEffect(() => {
-    const timer = setTimeout(onComplete, 4500);
-    return () => clearTimeout(timer);
-  }, [onComplete]);
-
+const SplashScreen = ({ onComplete, status }: { onComplete: () => void, status: string }) => {
   const bootSequence = [
     "Initializing Focus Protocols...",
     "Distraction Filter Enabled",
@@ -91,12 +86,20 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    // Check if we should complete the splash
+    if (bootIndex === bootSequence.length - 1 && status === 'ready') {
+      const timer = setTimeout(onComplete, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [bootIndex, status, onComplete]);
+
   return (
     <motion.div 
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 1 }}
-      className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-8 overflow-hidden"
+      className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 overflow-hidden"
     >
       <motion.div 
         animate={{ 
@@ -117,7 +120,7 @@ const SplashScreen = ({ onComplete }: { onComplete: () => void }) => {
           animate={{ opacity: 1, y: 0 }}
           className="text-[9px] uppercase tracking-[0.4em] text-white/40 font-bold"
         >
-          {bootSequence[bootIndex]}
+          {status === 'authenticating' ? 'Validating Quantum Identity...' : bootSequence[bootIndex]}
         </motion.p>
         <div className="w-48 h-[1px] bg-white/10 mx-auto overflow-hidden">
           <motion.div 
@@ -169,7 +172,7 @@ const GlobalHeader = ({ theme, view, setView }: { theme: string | undefined, vie
 
 const AuthScreen = () => {
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ title: string, details: string[] } | null>(null);
 
   const handleSignIn = async () => {
     if (isSigningIn) return;
@@ -179,7 +182,14 @@ const AuthScreen = () => {
       await signInWithGoogle();
     } catch (err: any) {
       console.error(err);
-      setError("Auth connection failed. Please ensure popups are enabled and try again.");
+      setError({
+        title: "UNABLE TO CONNECT TO AUTH SYSTEM",
+        details: [
+          "Redirect authentication timeout",
+          "Network protocol unavailable",
+          "Browser restrictions in standalone mode"
+        ]
+      });
     } finally {
       setIsSigningIn(false);
     }
@@ -187,20 +197,31 @@ const AuthScreen = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-white text-black p-8 font-sans">
-      <div className="space-y-4 mb-12 text-center">
+      <div className="space-y-4 mb-20 text-center">
         <h1 className="text-7xl font-thin tracking-tighter">VOX</h1>
         <p className="text-[10px] uppercase tracking-[0.4em] text-black/40 font-black">Monochrome Productivity OS</p>
       </div>
-      <div className="flex flex-col items-center gap-4">
+      
+      <div className="flex flex-col items-center gap-8 w-full max-w-xs">
         <button 
           onClick={handleSignIn}
           disabled={isSigningIn}
-          className={`border border-black px-6 py-3 text-sm uppercase tracking-widest transition-colors duration-300 ${isSigningIn ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black hover:text-white'}`}
+          className={`w-full border border-black px-6 py-4 text-xs font-black uppercase tracking-[0.3em] transition-all duration-500 overflow-hidden relative group ${isSigningIn ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black hover:text-white'}`}
         >
-          {isSigningIn ? 'Connecting...' : 'Initialize System'}
+          <span className="relative z-10">{isSigningIn ? 'Connecting...' : 'Initialize System'}</span>
+          {!isSigningIn && <motion.div className="absolute inset-0 bg-black translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500" />}
         </button>
+
         {error && (
-          <p className="text-[10px] uppercase tracking-widest text-red-500 text-center max-w-xs">{error}</p>
+          <div className="space-y-4 text-center animate-in fade-in slide-in-from-bottom-2 duration-700">
+            <p className="text-[10px] uppercase tracking-widest text-red-500 font-bold">{error.title}</p>
+            <div className="space-y-1">
+              {error.details.map((detail, idx) => (
+                <p key={idx} className="text-[8px] uppercase tracking-[0.2em] opacity-40">• {detail}</p>
+              ))}
+            </div>
+            <p className="text-[8px] uppercase tracking-widest font-black pt-4 opacity-100">Recommended: Ensure stable connection</p>
+          </div>
         )}
       </div>
     </div>
@@ -253,6 +274,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
+  const [bootStatus, setBootStatus] = useState<'booting' | 'authenticating' | 'ready'>('booting');
   const [currentView, setCurrentView] = useState<View>('home');
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [showDelay, setShowDelay] = useState(false);
@@ -260,16 +282,32 @@ export default function App() {
   const [notificationPreview, setNotificationPreview] = useState<{ title: string, body: string, app: string } | null>(null);
 
   useEffect(() => {
-    // If user is already logged in, we might want to skip splash faster if they return?
-    // But for "premium startup experience", we show it once per mount.
-  }, []);
+    const handleAuth = async () => {
+      setBootStatus('authenticating');
+      try {
+        await getLoginResult();
+      } catch (err) {
+        console.error("Redirect auth error:", err);
+      }
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+      const unsubscribe = onAuthStateChanged(auth, (u) => {
+        setUser(u);
+        setLoading(false);
+        if (u) {
+          // Additional initialization logic can go here
+          setBootStatus('ready');
+        } else {
+          setBootStatus('ready');
+          setShowSplash(false);
+        }
+      });
+      return unsubscribe;
+    };
+
+    const unsubAuth = handleAuth();
+    return () => {
+      unsubAuth.then(unsub => unsub?.());
+    };
   }, []);
 
   const [editingApp, setEditingApp] = useState<string | null>(null);
@@ -440,7 +478,7 @@ export default function App() {
     <div className={`min-h-screen ${settings?.theme === 'monochrome-dark' ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black'} font-sans transition-colors duration-500 overflow-hidden relative selection:bg-black selection:text-white`}>
       
       <AnimatePresence>
-        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+        {showSplash && <SplashScreen status={bootStatus} onComplete={() => setShowSplash(false)} />}
       </AnimatePresence>
 
       <NeuralLine theme={settings?.theme} />
