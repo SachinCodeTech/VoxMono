@@ -82,7 +82,7 @@ const SplashScreen = ({ onComplete, status }: { onComplete: () => void, status: 
   useEffect(() => {
     const interval = setInterval(() => {
       setBootIndex(prev => (prev < bootSequence.length - 1 ? prev + 1 : prev));
-    }, 800);
+    }, 400); // Faster boot sequence
     return () => clearInterval(interval);
   }, []);
 
@@ -141,33 +141,41 @@ const NeuralLine = ({ theme }: { theme: string | undefined }) => (
   </div>
 );
 
-const GlobalHeader = ({ theme, view, setView }: { theme: string | undefined, view: View, setView: (v: View) => void }) => (
-  <header className={`px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 z-30 transition-all ${theme === 'monochrome-dark' ? 'bg-[#0a0a0a]/90' : 'bg-white/90'} backdrop-blur-2xl border-b ${theme === 'monochrome-dark' ? 'border-white/5' : 'border-black/5'}`}>
-    <div className="flex items-center gap-5 cursor-pointer group" onClick={() => setView('home')}>
+const GlobalHeader = ({ theme, view, setView, isGuest }: { theme: string | undefined, view: View, setView: (v: View) => void, isGuest?: boolean }) => (
+  <header className={`px-6 pt-12 pb-4 flex items-center justify-between sticky top-0 z-30 transition-all ${theme === 'monochrome-dark' ? 'bg-[#0a0a0a]/80' : 'bg-white/80'} backdrop-blur-xl border-b border-transparent`}>
+    <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setView('home')}>
       <motion.div 
         whileHover={{ scale: 1.05, rotate: 180 }}
         whileTap={{ scale: 0.9 }}
-        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${theme === 'monochrome-dark' ? 'bg-white shadow-[0_0_25px_rgba(255,255,255,0.1)]' : 'bg-black shadow-premium shadow-black/10'}`}
+        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${theme === 'monochrome-dark' ? 'bg-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'bg-black shadow-premium shadow-black/10'}`}
       >
-        <div className={`w-4.5 h-4.5 ${theme === 'monochrome-dark' ? 'bg-black' : 'bg-white'} rotate-45 transition-colors duration-500`} />
+        <div className={`w-4 h-4 ${theme === 'monochrome-dark' ? 'bg-black' : 'bg-white'} rotate-45`} />
       </motion.div>
-      <div className="flex flex-col">
-        <h1 className="text-2xl font-black uppercase tracking-[0.1em] leading-none mb-1">VOX MONO</h1>
-        <p className="text-[7.5px] font-black uppercase tracking-[0.45em] opacity-40 leading-none">Sovereign OS • Matrix Active</p>
+      <div className="flex flex-col justify-center">
+        <div className="flex items-baseline gap-3">
+          <span className="text-3xl font-black uppercase tracking-[0.05em] leading-none">VoxMono</span>
+          <span className="hidden sm:inline text-[9px] font-black uppercase tracking-[0.4em] opacity-40 leading-none">Sovereign OS</span>
+        </div>
+        <span className="sm:hidden text-[8px] font-black uppercase tracking-[0.4em] opacity-40 leading-none mt-1">Sovereign OS</span>
       </div>
     </div>
     <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 backdrop-blur-md">
-        <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
-        <span className="text-[8px] font-black uppercase tracking-widest opacity-80 leading-none">STABLE</span>
+      <div className="flex flex-col items-end">
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border backdrop-blur-md transition-all duration-500
+          ${isGuest ? (theme === 'monochrome-dark' ? 'bg-white/10 border-white/20' : 'bg-black/5 border-black/5') : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/10'}`}>
+          <Activity size={10} className={isGuest ? "text-yellow-500 animate-pulse" : "text-green-500 animate-pulse"} />
+          <span className="text-[9px] font-black uppercase tracking-widest opacity-80 leading-none">
+            {isGuest ? 'GUEST_SYMMETRY' : 'STABLE'}
+          </span>
+        </div>
       </div>
     </div>
   </header>
 );
 
-const AuthScreen = () => {
+const AuthScreen = ({ onGuestLogin }: { onGuestLogin: () => void }) => {
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [error, setError] = useState<{ title: string, details: string[] } | null>(null);
+  const [error, setError] = useState<{ title: string, details: string[], code?: string } | null>(null);
 
   const handleSignIn = async () => {
     if (isSigningIn) return;
@@ -176,13 +184,14 @@ const AuthScreen = () => {
     try {
       await signInWithGoogle();
     } catch (err: any) {
-      console.error(err);
+      console.error("Login attempt failed:", err);
       setError({
         title: "UNABLE TO CONNECT TO AUTH SYSTEM",
+        code: err.code,
         details: [
-          "Redirect authentication timeout",
-          "Network protocol unavailable",
-          "Browser restrictions in standalone mode"
+          err.message || "Redirect authentication protocol failed",
+          "Browser restrictions in standalone mode",
+          "Authorized Domain not set for this project"
         ]
       });
     } finally {
@@ -190,74 +199,71 @@ const AuthScreen = () => {
     }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-black p-8 font-sans overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-1 bg-black/5">
-        <motion.div 
-          animate={{ x: ["-100%", "100%"] }} 
-          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-          className="w-1/3 h-full bg-black/20" 
-        />
-      </div>
+  const currentDomain = window.location.hostname;
+  const firebaseSettingsLink = `https://console.firebase.google.com/u/0/project/linen-radius-9cf5x/authentication/settings`;
 
-      <div className="space-y-6 mb-24 text-center">
-        <motion.h1 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-8xl font-thin tracking-tighter"
-        >
-          VOX
-        </motion.h1>
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-[10px] uppercase tracking-[0.6em] text-black/30 font-black"
-        >
-          Sovereign Intelligence OS
-        </motion.p>
-      </div>
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-black p-8 font-sans">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-4 mb-20 text-center"
+      >
+        <h1 className="text-7xl font-thin tracking-tighter">VOX</h1>
+        <p className="text-[10px] uppercase tracking-[0.4em] text-black/40 font-black">Monochrome Productivity OS</p>
+      </motion.div>
       
-      <div className="flex flex-col items-center gap-10 w-full max-w-sm">
-        <motion.button 
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+      <div className="flex flex-col items-center gap-6 w-full max-w-xs">
+        <button 
           onClick={handleSignIn}
           disabled={isSigningIn}
-          className={`w-full bg-black text-white px-8 py-5 text-[10px] font-black uppercase tracking-[0.4em] transition-all duration-500 shadow-2xl shadow-black/20 relative group overflow-hidden ${isSigningIn ? 'opacity-50 cursor-not-allowed' : ''}`}
+          className={`w-full border-2 border-black px-6 py-5 text-sm font-black uppercase tracking-[0.3em] transition-all duration-500 overflow-hidden relative group rounded-2xl ${isSigningIn ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black hover:text-white active:scale-95'}`}
         >
-          <span className="relative z-10">{isSigningIn ? 'Connecting...' : 'Initialize System'}</span>
-          <motion.div 
-            className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-700" 
-          />
-        </motion.button>
+          <span className="relative z-10">{isSigningIn ? 'NEGOTIATING...' : 'SECURE INITIALIZE'}</span>
+        </button>
+
+        <button 
+          onClick={onGuestLogin}
+          className="text-[10px] uppercase tracking-[0.3em] font-black opacity-30 hover:opacity-100 transition-opacity p-4"
+        >
+          - CONTINUE AS GUEST -
+        </button>
 
         {error && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-5 text-center px-4"
-          >
-            <p className="text-[10px] uppercase tracking-widest text-red-500 font-black">{error.title}</p>
-            <div className="space-y-2 opacity-40">
+          <div className="space-y-6 text-center animate-in fade-in slide-in-from-bottom-2 duration-700 bg-red-50 p-6 rounded-[2rem] border border-red-100">
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-widest text-red-500 font-bold">{error.title}</p>
+              {error.code && <p className="text-[8px] font-mono opacity-40 uppercase">System Exception: {error.code}</p>}
+            </div>
+
+            <div className="space-y-3">
               {error.details.map((detail, idx) => (
-                <p key={idx} className="text-[8px] uppercase tracking-[0.2em] font-medium">• {detail}</p>
+                <p key={idx} className="text-[9px] uppercase tracking-widest leading-relaxed opacity-60">• {detail}</p>
               ))}
             </div>
-            <div className="pt-4">
-              <p className="text-[9px] uppercase tracking-[0.3em] font-black opacity-100 mb-4 px-6 py-2 border border-black/5 rounded-full inline-block">Use Redirect Login Mode (Active)</p>
-              <p className="text-[8px] uppercase tracking-widest opacity-30">Standalone PWAs require standard redirect protocols.</p>
-            </div>
-          </motion.div>
-        )}
-      </div>
 
-      {/* Floating Status Bar at bottom */}
-      <div className="fixed bottom-12 flex flex-col items-center gap-2">
-        <div className="flex items-center gap-3">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[8px] font-black uppercase tracking-[0.4em] opacity-20">Network Protocol: Stable</span>
-        </div>
+            <div className="pt-4 border-t border-red-200/50 mt-4 space-y-4">
+              <div className="space-y-2">
+                <p className="text-[8px] uppercase tracking-widest font-black text-red-500">VOX AUTHORIZATION LINK:</p>
+                <a 
+                  href={firebaseSettingsLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block p-3 rounded-xl bg-red-100 text-red-600 font-mono text-[9px] underline decoration-red-200 hover:bg-red-200/50 transition-colors break-all"
+                >
+                  OPEN FIREBASE SETTINGS
+                </a>
+              </div>
+              
+              <div className="space-y-1">
+                <p className="text-[8px] uppercase tracking-widest font-black text-black/40">DOMAIN TO AUTHORIZE:</p>
+                <div className="bg-white/80 p-2 rounded-lg border border-red-100 select-all font-mono text-[9px] break-all">
+                  {currentDomain}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -307,6 +313,7 @@ const AppIcon = ({ id, name, onClick, onEdit, isSystem = false, settings }: { id
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSplash, setShowSplash] = useState(true);
   const [bootStatus, setBootStatus] = useState<'booting' | 'authenticating' | 'ready'>('booting');
@@ -317,33 +324,70 @@ export default function App() {
   const [notificationPreview, setNotificationPreview] = useState<{ title: string, body: string, app: string } | null>(null);
 
   useEffect(() => {
-    const handleAuth = async () => {
+    // Check if guest mode was enabled previously
+    const savedGuestMode = localStorage.getItem('vox_guest_mode');
+    if (savedGuestMode === 'true') {
+      setIsGuest(true);
+      // Initialize guest settings if they don't exist
+      setSettings(prev => prev || {
+        userId: 'guest',
+        theme: 'monochrome-light',
+        mindfulDelayEnabled: true,
+        showClock: true,
+        showWorldClock: true,
+        worldClocks: ['Asia/Kolkata'],
+        customNames: {},
+        customIcons: {},
+        folders: [],
+        appOrder: APPS.map(a => a.id)
+      });
+    }
+
+    // Initial Auth Listener
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        setUser(u);
+        setIsGuest(false);
+        localStorage.removeItem('vox_guest_mode');
+      }
+      setLoading(false);
+      setBootStatus('ready');
+    });
+
+    // Check for redirect result in background
+    const checkRedirect = async () => {
       setBootStatus('authenticating');
       try {
         await getLoginResult();
       } catch (err) {
         console.error("Redirect auth error:", err);
+      } finally {
+        setBootStatus('ready');
       }
-
-      const unsubscribe = onAuthStateChanged(auth, (u) => {
-        setUser(u);
-        setLoading(false);
-        if (u) {
-          // Additional initialization logic can go here
-          setBootStatus('ready');
-        } else {
-          setBootStatus('ready');
-          setShowSplash(false);
-        }
-      });
-      return unsubscribe;
     };
 
-    const unsubAuth = handleAuth();
-    return () => {
-      unsubAuth.then(unsub => unsub?.());
-    };
+    checkRedirect();
+    return () => unsubscribe();
   }, []);
+
+  const handleGuestLogin = () => {
+    setIsGuest(true);
+    localStorage.setItem('vox_guest_mode', 'true');
+    setLoading(false);
+    setShowSplash(false);
+    setSettings({
+      userId: 'guest',
+      theme: 'monochrome-light',
+      mindfulDelayEnabled: true,
+      showClock: true,
+      showWorldClock: true,
+      worldClocks: ['Asia/Kolkata'],
+      customNames: {},
+      customIcons: {},
+      folders: [],
+      appOrder: APPS.map(a => a.id)
+    });
+  };
 
   const [editingApp, setEditingApp] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
@@ -417,7 +461,7 @@ export default function App() {
       setTimeout(() => {
         setShowDelay(false);
         setCurrentView(view);
-      }, 2000);
+      }, 1200); // Reduced delay for better UX while keeping intent
     } else {
       setCurrentView(view);
     }
@@ -473,8 +517,19 @@ export default function App() {
     if (defaultLinks[id]) window.open(defaultLinks[id], '_blank');
   };
 
-  if (loading) return null;
-  if (!user) return <AuthScreen />;
+  // If user is not logged in and splash is done, show auth
+  if (!user && !isGuest && !loading && !showSplash) {
+    return <AuthScreen onGuestLogin={handleGuestLogin} />;
+  }
+
+  if (loading && !showSplash) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-8">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
+        <p className="text-[10px] uppercase tracking-[0.4em] opacity-40 font-black">Syncing Protocol...</p>
+      </div>
+    );
+  }
 
   const appMap = [...APPS, ...MOCKED_SYSTEM_APPS].reduce((acc, app) => ({ ...acc, [app.id]: app }), {} as any);
 
@@ -536,7 +591,7 @@ export default function App() {
               <div className="w-12 h-px bg-current opacity-20 mx-auto" />
               <motion.div 
                 animate={{ width: ["0%", "100%"] }}
-                transition={{ duration: 2, ease: "linear" }}
+                transition={{ duration: 1.2, ease: "linear" }}
                 className="h-0.5 bg-current opacity-60"
                 style={{ width: "80px", margin: "auto" }}
               />
@@ -722,12 +777,12 @@ export default function App() {
         }}
       >
         {/* Global Header */}
-        {!showSplash && user && (
-          <GlobalHeader theme={settings?.theme} view={currentView} setView={setCurrentView} />
+        {!showSplash && (user || isGuest) && (
+          <GlobalHeader theme={settings?.theme} view={currentView} setView={setCurrentView} isGuest={isGuest} />
         )}
 
         <AnimatePresence mode="wait">
-          {currentView === 'home' && (
+          {(user || isGuest) && currentView === 'home' && (
             <motion.div
               key="home"
               initial={{ opacity: 0, scale: 0.98 }}
@@ -750,7 +805,9 @@ export default function App() {
               {/* Time & Productivity Widget */}
               {settings?.showClock && (
                 <div className="mb-12 flex flex-col items-center">
-                  <p className="text-[10px] uppercase tracking-[0.4em] font-black opacity-30 mb-2">Good Day, Explorer</p>
+                  <p className="text-[10px] uppercase tracking-[0.4em] font-black opacity-30 mb-2">
+                    {isGuest ? 'Guest Protocol Active' : 'Good Day, Explorer'}
+                  </p>
                   <div className="relative group">
                     <motion.h2 
                       initial={{ opacity: 0, y: 10 }}
@@ -774,16 +831,22 @@ export default function App() {
                         'Europe/London', 
                         'America/New_York', 
                         'Asia/Tokyo'
-                      ]).map(tz => (
-                        <div key={tz} className="flex flex-col items-center">
-                          <span className="text-[7px] font-black uppercase tracking-widest mb-0.5">
-                            {tz.split('/').pop()?.replace('_', ' ').substring(0, 3)}
-                          </span>
-                          <span className="text-[10px] font-mono tracking-tighter">
-                            {new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      ))}
+                      ]).map(tz => {
+                        try {
+                          return (
+                            <div key={tz} className="flex flex-col items-center">
+                              <span className="text-[7px] font-black uppercase tracking-widest mb-0.5">
+                                {tz.split('/').pop()?.replace('_', ' ').substring(0, 3)}
+                              </span>
+                              <span className="text-[10px] font-mono tracking-tighter">
+                                {new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          );
+                        } catch (e) {
+                          return null;
+                        }
+                      })}
                     </motion.div>
                   )}
                   
@@ -863,50 +926,44 @@ export default function App() {
               <div className="flex-1 overflow-y-auto scrollbar-hide">
                 <Reorder.Group axis="y" values={reorderedApps} onReorder={handleReorder} className="flex-1">
                   <div className="grid grid-cols-4 gap-y-10 gap-x-2">
-                      {reorderedApps.map(id => {
-                        const folder = settings?.folders?.find(f => f.id === id);
-                        if (folder) {
-                          return (
-                            <Reorder.Item key={id} value={id}>
-                              <motion.div
-                                onClick={() => setSelectedFolder(folder)}
-                                className="flex flex-col items-center gap-4 group w-full relative h-[140px] cursor-pointer"
-                              >
-                                 <div className={`w-16 h-16 sm:w-20 sm:h-20 border rounded-[2.5rem] p-3.5 grid grid-cols-2 gap-1.5 transition-all duration-500 overflow-hidden group-hover:scale-105
-                                  ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
-                                  {folder.appIds.slice(0, 4).map(appId => {
-                                    const appData = appMap[appId];
-                                    const Icon = (LucideIcons as any)[settings?.customIcons?.[appId] || ICON_MAP[appId] || 'Globe'];
-                                    return <Icon key={appId} size={12} strokeWidth={1.5} className="opacity-40" />;
-                                  })}
-                                  {folder.appIds.length === 0 && (
-                                    <div className="col-span-2 row-span-2 flex items-center justify-center">
-                                      <Layers size={14} className="opacity-10" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="w-full flex items-start justify-center">
-                                  <span className={`text-[9px] uppercase tracking-[0.1em] font-black w-full text-center px-1.5 leading-tight break-words line-clamp-2
-                                    ${settings?.theme === 'monochrome-dark' ? 'text-white/50 group-hover:text-white' : 'text-black/50 group-hover:text-black'}`}>
-                                    {folder.name}
-                                  </span>
-                                </div>
-                              </motion.div>
-                            </Reorder.Item>
-                          );
-                        }
+                    {reorderedApps.map(id => {
+                      const folder = settings?.folders?.find(f => f.id === id);
+                      if (folder) {
                         return (
                           <Reorder.Item key={id} value={id}>
-                            <AppIcon 
-                              id={id} 
-                              name={appMap[id]?.name || id} 
-                              onClick={() => handleAppClick(id as any)} 
-                              onEdit={() => handleAppEdit(id)}
-                              settings={settings}
-                            />
+                            <motion.div
+                              onClick={() => setSelectedFolder(folder)}
+                              className="flex flex-col items-center gap-3 group w-full relative h-[120px]"
+                            >
+                               <div className={`w-16 h-16 sm:w-20 sm:h-20 border rounded-[2rem] p-3 grid grid-cols-2 gap-1 transition-all duration-500 overflow-hidden
+                                ${settings?.theme === 'monochrome-dark' ? 'bg-white/10 border-white/20' : 'bg-gray-100 border-black/10'}`}>
+                                {folder.appIds.slice(0, 4).map(appId => {
+                                  const Icon = (LucideIcons as any)[settings?.customIcons?.[appId] || ICON_MAP[appId] || 'Globe'];
+                                  return <Icon key={appId} size={10} className="opacity-40" />;
+                                })}
+                              </div>
+                              <div className="w-full min-h-[44px] flex items-start justify-center pt-2">
+                                <span className={`text-[9px] uppercase tracking-[0.05em] font-black w-full text-center px-0.5 leading-tight break-words line-clamp-2
+                                  ${settings?.theme === 'monochrome-dark' ? 'text-white/50 group-hover:text-white' : 'text-black/50 group-hover:text-black'}`}>
+                                  {folder.name}
+                                </span>
+                              </div>
+                            </motion.div>
                           </Reorder.Item>
                         );
-                      })}
+                      }
+                      return (
+                        <Reorder.Item key={id} value={id}>
+                          <AppIcon 
+                            id={id} 
+                            name={appMap[id]?.name || id} 
+                            onClick={() => handleAppClick(id as any)} 
+                            onEdit={() => handleAppEdit(id)}
+                            settings={settings}
+                          />
+                        </Reorder.Item>
+                      );
+                    })}
                   </div>
                 </Reorder.Group>
               </div>
@@ -935,19 +992,19 @@ export default function App() {
             </motion.div>
           )}
 
-          {currentView === 'tasks' && <TaskView onBack={() => setCurrentView('home')} user={user} />}
-          {currentView === 'focus' && <FocusView onBack={() => setCurrentView('home')} user={user} settings={settings} />}
-          {currentView === 'vox' && <VoxAssistant onBack={() => setCurrentView('home')} />}
-          {currentView === 'settings' && <SettingsView onBack={() => setCurrentView('home')} user={user} settings={settings} setView={setCurrentView} createFolder={createFolder} reorderedApps={reorderedApps} appMap={appMap} />}
-          {currentView === 'history' && <FocusHistoryView onBack={() => setCurrentView('home')} user={user} />}
-          {currentView === 'about' && <AboutPage onBack={() => setCurrentView('settings')} />}
-          {currentView === 'app-info' && <AppInfoPage onBack={() => setCurrentView('settings')} user={user} />}
-          {currentView === 'privacy' && <PrivacyPolicyPage onBack={() => setCurrentView('settings')} />}
-          {currentView === 'guide' && <UserGuidePage onBack={() => setCurrentView('settings')} />}
-          {currentView === 'blueprint' && <BlueprintPage onBack={() => setCurrentView('settings')} />}
+          {(user || isGuest) && currentView === 'tasks' && <TaskView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} />}
+          {(user || isGuest) && currentView === 'focus' && <FocusView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} settings={settings} />}
+          {(user || isGuest) && currentView === 'vox' && <VoxAssistant onBack={() => setCurrentView('home')} />}
+          {(user || isGuest) && currentView === 'settings' && <SettingsView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} settings={settings} setView={setCurrentView} createFolder={createFolder} />}
+          {(user || isGuest) && currentView === 'history' && <FocusHistoryView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} />}
+          {(user || isGuest) && currentView === 'about' && <AboutPage onBack={() => setCurrentView('settings')} />}
+          {(user || isGuest) && currentView === 'app-info' && <AppInfoPage onBack={() => setCurrentView('settings')} user={user || ({ uid: 'guest' } as any)} />}
+          {(user || isGuest) && currentView === 'privacy' && <PrivacyPolicyPage onBack={() => setCurrentView('settings')} />}
+          {(user || isGuest) && currentView === 'guide' && <UserGuidePage onBack={() => setCurrentView('settings')} />}
+          {(user || isGuest) && currentView === 'blueprint' && <BlueprintPage onBack={() => setCurrentView('settings')} />}
         </AnimatePresence>
 
-        <BottomNav />
+        {(user || isGuest) && !showSplash && <BottomNav />}
       </motion.div>
     </div>
   );
@@ -1701,15 +1758,7 @@ const VoxAssistant = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-const SettingsView = ({ onBack, user, settings, setView, createFolder, reorderedApps, appMap }: { 
-  onBack: () => void, 
-  user: FirebaseUser, 
-  settings: UserSettings | null, 
-  setView: (v: View) => void, 
-  createFolder: (ids: string[]) => void,
-  reorderedApps: string[],
-  appMap: any
-}) => {
+const SettingsView = ({ onBack, user, settings, setView, createFolder }: { onBack: () => void, user: FirebaseUser, settings: UserSettings | null, setView: (v: View) => void, createFolder: (ids: string[]) => void }) => {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [selectedFolderApps, setSelectedFolderApps] = useState<string[]>([]);
   
@@ -1801,17 +1850,13 @@ const SectionHeader = ({ title, theme }: { title: string, theme: string | undefi
         <section>
            <SectionHeader title="Folders" theme={settings?.theme} />
            <div className="space-y-4">
-             {(!settings?.folders || settings.folders.length === 0) && (
-               <div className="text-center py-10 border border-dashed border-black/10 rounded-[2.5rem]">
-                 <p className="text-[10px] uppercase tracking-widest opacity-30 font-black">No active clusters</p>
-               </div>
-             )}
+             {settings?.folders?.length === 0 && <p className="text-[10px] uppercase tracking-widest opacity-30 text-center py-8">No clusters defined.</p>}
              {settings?.folders?.map(folder => (
-               <div key={folder.id} className={`flex flex-col gap-5 p-7 rounded-[2.5rem] border transition-all ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
+               <div key={folder.id} className={`flex flex-col gap-4 p-6 rounded-[2rem] border transition-all ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                        <div className={`p-3 rounded-2xl ${settings?.theme === 'monochrome-dark' ? 'bg-white/10' : 'bg-gray-50'}`}>
-                          <Layers size={14} className="opacity-40" />
+                    <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-2xl ${settings?.theme === 'monochrome-dark' ? 'bg-white/10' : 'bg-gray-100'}`}>
+                          <Layout size={14} className="opacity-60" />
                         </div>
                         <input 
                           value={folder.name}
@@ -1819,100 +1864,61 @@ const SectionHeader = ({ title, theme }: { title: string, theme: string | undefi
                             const updated = settings.folders?.map(f => f.id === folder.id ? { ...f, name: e.target.value } : f) || [];
                             await updateSetting('folders', updated);
                           }}
-                          className={`bg-transparent text-sm uppercase font-black tracking-widest outline-none border-b border-transparent focus:border-current flex-1 min-w-0 font-sans ${settings?.theme === 'monochrome-dark' ? 'text-white' : 'text-black focus:border-black/20'}`}
+                          className={`bg-transparent text-[11px] uppercase font-black tracking-widest outline-none border-b border-transparent focus:border-current flex-1 min-w-0 ${settings?.theme === 'monochrome-dark' ? 'text-white' : 'text-black'}`}
                         />
                     </div>
                     <button 
                       onClick={async () => {
                         const updated = settings.folders?.filter(f => f.id !== folder.id) || [];
                         await updateSetting('folders', updated);
-                        await updateSetting('appOrder', reorderedApps.filter(id => id !== folder.id));
                       }}
-                      className="p-3 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all ml-4"
+                      className="p-2 opacity-20 hover:opacity-100 hover:text-red-500 transition-all"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={16} />
                     </button>
-                 </div>
-                 
-                 <div className="flex flex-wrap gap-2 pt-2">
-                   {folder.appIds.map(appId => (
-                     <div key={appId} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10">
-                        <span className="text-[9px] uppercase font-black tracking-widest opacity-60">{appMap[appId]?.name || appId}</span>
-                        <button 
-                          onClick={async () => {
-                            const updated = settings.folders?.map(f => f.id === folder.id ? { ...f, appIds: f.appIds.filter(id => id !== appId) } : f) || [];
-                            await updateSetting('folders', updated);
-                            await updateSetting('appOrder', [...reorderedApps, appId]);
-                          }}
-                          className="opacity-40 hover:opacity-100"
-                        >
-                          <X size={10} />
-                        </button>
-                     </div>
-                   ))}
-                   <button 
-                     onClick={() => setIsCreatingFolder(true)}
-                     className="text-[9px] uppercase font-black tracking-widest opacity-30 hover:opacity-100 flex items-center gap-1 ml-2"
-                   >
-                     <Plus size={10} /> Add
-                   </button>
                  </div>
                </div>
              ))}
 
              {isCreatingFolder ? (
-               <motion.div 
-                 initial={{ opacity: 0, y: 10 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 className="p-8 border border-black/10 dark:border-white/10 rounded-[2.5rem] space-y-8 bg-gray-50/50 dark:bg-white/5"
-               >
-                 <header className="flex justify-between items-center">
-                    <p className="text-[10px] uppercase tracking-widest font-black opacity-40">System Clustering</p>
-                    <span className="text-[8px] font-mono opacity-30">{selectedFolderApps.length} Selected</span>
-                 </header>
-                 <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto scrollbar-hide pr-1">
-                   {[...APPS, ...MOCKED_SYSTEM_APPS]
-                     .filter(app => !settings?.folders?.some(f => f.appIds.includes(app.id)))
-                     .map(app => (
+               <div className="p-8 border border-black/10 dark:border-white/10 rounded-[2.5rem] space-y-6">
+                 <p className="text-[10px] uppercase tracking-widest font-black opacity-40">Select Apps to Group</p>
+                 <div className="grid grid-cols-2 gap-3">
+                   {[...APPS, ...MOCKED_SYSTEM_APPS].map(app => (
                      <button 
                        key={app.id}
                        onClick={() => setSelectedFolderApps(prev => prev.includes(app.id) ? prev.filter(id => id !== app.id) : [...prev, app.id])}
-                       className={`flex items-center gap-3 p-4 rounded-2xl text-[9px] uppercase font-black tracking-widest border transition-all ${selectedFolderApps.includes(app.id) ? 'bg-black text-white border-black shadow-lg shadow-black/10' : 'bg-white dark:bg-[#111] border-black/5 opacity-60'}`}
+                       className={`p-3 rounded-2xl text-[10px] uppercase font-black tracking-widest border transition-all ${selectedFolderApps.includes(app.id) ? 'bg-black text-white border-black' : 'border-gray-100 opacity-40'}`}
                      >
-                       <div className={`w-2 h-2 rounded-full ${selectedFolderApps.includes(app.id) ? 'bg-white' : 'bg-black/10'}`} />
                        {app.name}
                      </button>
                    ))}
                  </div>
-                 <div className="flex gap-4 pt-2">
+                 <div className="flex gap-2 pt-2">
                    <button 
                      onClick={() => {
                         if (selectedFolderApps.length > 0) createFolder(selectedFolderApps);
                         setIsCreatingFolder(false);
                         setSelectedFolderApps([]);
                      }}
-                     className="flex-1 py-5 bg-black text-white dark:bg-white dark:text-black rounded-3xl text-[10px] uppercase font-black tracking-widest shadow-xl transition-all active:scale-95"
+                     className="flex-1 py-4 bg-black text-white rounded-2xl text-[10px] uppercase font-black tracking-widest"
                    >
-                     Confirm Matrix
+                     Confirm
                    </button>
                    <button 
-                     onClick={() => {
-                       setIsCreatingFolder(false);
-                       setSelectedFolderApps([]);
-                     }}
-                     className="flex-1 py-5 border border-black/10 dark:border-white/10 rounded-3xl text-[10px] uppercase font-black tracking-widest opacity-40 hover:opacity-100 transition-all"
+                     onClick={() => setIsCreatingFolder(false)}
+                     className="flex-1 py-4 border border-black/10 rounded-2xl text-[10px] uppercase font-black tracking-widest opacity-40"
                    >
                      Cancel
                    </button>
                  </div>
-               </motion.div>
+               </div>
              ) : (
                <button 
                 onClick={() => setIsCreatingFolder(true)} 
-                className={`w-full py-7 rounded-[2.5rem] border border-dashed text-[10px] uppercase font-black tracking-widest opacity-40 hover:opacity-100 transition-all flex items-center justify-center gap-3
-                  ${settings?.theme === 'monochrome-dark' ? 'border-white/20' : 'border-black/20'}`}
+                className="w-full py-6 rounded-[2rem] border border-dashed border-black/20 dark:border-white/20 text-[10px] uppercase font-black tracking-widest opacity-40 hover:opacity-100 transition-all"
                >
-                 <Plus size={14} strokeWidth={3} /> Initialize New Cluster
+                 + Initialize New Cluster
                </button>
              )}
            </div>
@@ -2008,16 +2014,40 @@ const SectionHeader = ({ title, theme }: { title: string, theme: string | undefi
 
         <section>
           <SectionHeader title="Detox Protocol" theme={settings?.theme} />
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="space-y-2">
-              <label className="text-[8px] uppercase tracking-widest opacity-40 px-1 font-black">World Clocks (TZ Identifiers)</label>
-              <input 
-                type="text" 
-                value={settings?.worldClocks?.join(', ') || ''}
-                onChange={(e) => updateSetting('worldClocks', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                placeholder="Europe/London, America/New_York"
-                className={`w-full px-5 py-4 rounded-2xl text-[10px] tracking-widest uppercase outline-none border transition-all ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10 focus:border-white/30' : 'bg-gray-50 border-black/5 focus:border-black/20'}`}
-              />
+              <label className="text-[8px] uppercase tracking-widest opacity-40 px-1 font-black">World Clocks (e.g. Asia/Tokyo, London)</label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  id="world-clock-input"
+                  placeholder="Asia/Kolkata"
+                  className={`flex-1 px-5 py-4 rounded-2xl text-[10px] tracking-widest uppercase outline-none border transition-all ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10 focus:border-white/30' : 'bg-gray-50 border-black/5 focus:border-black/20'}`}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val) {
+                        const current = settings?.worldClocks || [];
+                        if (!current.includes(val)) {
+                          await updateSetting('worldClocks', [...current, val]);
+                        }
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {settings?.worldClocks?.map(tz => (
+                  <button 
+                    key={tz}
+                    onClick={() => updateSetting('worldClocks', settings.worldClocks.filter(t => t !== tz))}
+                    className={`px-3 py-2 rounded-xl text-[8px] uppercase font-bold tracking-widest border border-black/5 hover:bg-red-50 hover:text-red-500 transition-all ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10' : 'bg-white'}`}
+                  >
+                    {tz} ×
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button 
