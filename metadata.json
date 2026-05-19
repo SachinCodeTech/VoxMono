@@ -1,0 +1,8 @@
+{
+  "name": "VoxMono",
+  "description": "Minimalist Monochrome Launcher — Productivity First Digital Detox system designed to reduce screen time and improve focus.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

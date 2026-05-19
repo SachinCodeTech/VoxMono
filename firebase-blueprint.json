@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A productivity task in the Vox system",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "priority": { "enum": ["low", "medium", "high"] }
+      },
+      "required": ["userId", "title", "completed", "createdAt"]
+    },
+    "FocusSession": {
+      "title": "Focus Session",
+      "description": "A timed deep work session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "durationMinutes": { "type": "integer" },
+        "taskStarted": { "type": "string" },
+        "completed": { "type": "boolean" }
+      },
+      "required": ["userId", "startTime", "durationMinutes", "completed"]
+    },
+    "UserSettings": {
+      "title": "User Settings",
+      "description": "Personalization for the launcher",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "theme": { "enum": ["monochrome-light", "monochrome-dark"] },
+        "mindfulDelayEnabled": { "type": "boolean" },
+        "showClock": { "type": "boolean" }
+      },
+      "required": ["userId", "theme"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/tasks": {
+      "schema": "Task",
+      "description": "User tasks"
+    },
+    "users/{userId}/sessions": {
+      "schema": "FocusSession",
+      "description": "Focus history"
+    },
+    "users/{userId}/settings": {
+      "schema": "UserSettings",
+      "description": "Global settings"
+    }
+  }
+}
