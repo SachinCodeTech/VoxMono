@@ -142,29 +142,24 @@ const NeuralLine = ({ theme }: { theme: string | undefined }) => (
 );
 
 const GlobalHeader = ({ theme, view, setView }: { theme: string | undefined, view: View, setView: (v: View) => void }) => (
-  <header className={`px-6 pt-12 pb-4 flex items-center justify-between sticky top-0 z-30 transition-all ${theme === 'monochrome-dark' ? 'bg-[#0a0a0a]/80' : 'bg-white/80'} backdrop-blur-xl border-b border-transparent`}>
-    <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setView('home')}>
+  <header className={`px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 z-30 transition-all ${theme === 'monochrome-dark' ? 'bg-[#0a0a0a]/90' : 'bg-white/90'} backdrop-blur-2xl border-b ${theme === 'monochrome-dark' ? 'border-white/5' : 'border-black/5'}`}>
+    <div className="flex items-center gap-5 cursor-pointer group" onClick={() => setView('home')}>
       <motion.div 
         whileHover={{ scale: 1.05, rotate: 180 }}
         whileTap={{ scale: 0.9 }}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${theme === 'monochrome-dark' ? 'bg-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'bg-black shadow-premium shadow-black/10'}`}
+        className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${theme === 'monochrome-dark' ? 'bg-white shadow-[0_0_25px_rgba(255,255,255,0.1)]' : 'bg-black shadow-premium shadow-black/10'}`}
       >
-        <div className={`w-4 h-4 ${theme === 'monochrome-dark' ? 'bg-black' : 'bg-white'} rotate-45`} />
+        <div className={`w-4.5 h-4.5 ${theme === 'monochrome-dark' ? 'bg-black' : 'bg-white'} rotate-45 transition-colors duration-500`} />
       </motion.div>
-      <div className="flex flex-col justify-center">
-        <div className="flex items-baseline gap-3">
-          <span className="text-3xl font-black uppercase tracking-[0.05em] leading-none">VoxMono</span>
-          <span className="hidden sm:inline text-[9px] font-black uppercase tracking-[0.4em] opacity-40 leading-none">Sovereign OS</span>
-        </div>
-        <span className="sm:hidden text-[8px] font-black uppercase tracking-[0.4em] opacity-40 leading-none mt-1">Sovereign OS</span>
+      <div className="flex flex-col">
+        <h1 className="text-2xl font-black uppercase tracking-[0.1em] leading-none mb-1">VOX MONO</h1>
+        <p className="text-[7.5px] font-black uppercase tracking-[0.45em] opacity-40 leading-none">Sovereign OS • Matrix Active</p>
       </div>
     </div>
     <div className="flex items-center gap-4">
-      <div className="flex flex-col items-end">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 backdrop-blur-md">
-          <Activity size={10} className="text-green-500 animate-pulse" />
-          <span className="text-[9px] font-black uppercase tracking-widest opacity-80 leading-none">STABLE</span>
-        </div>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 backdrop-blur-md">
+        <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse" />
+        <span className="text-[8px] font-black uppercase tracking-widest opacity-80 leading-none">STABLE</span>
       </div>
     </div>
   </header>
@@ -196,33 +191,73 @@ const AuthScreen = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-white text-black p-8 font-sans">
-      <div className="space-y-4 mb-20 text-center">
-        <h1 className="text-7xl font-thin tracking-tighter">VOX</h1>
-        <p className="text-[10px] uppercase tracking-[0.4em] text-black/40 font-black">Monochrome Productivity OS</p>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-black p-8 font-sans overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-1 bg-black/5">
+        <motion.div 
+          animate={{ x: ["-100%", "100%"] }} 
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          className="w-1/3 h-full bg-black/20" 
+        />
+      </div>
+
+      <div className="space-y-6 mb-24 text-center">
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-8xl font-thin tracking-tighter"
+        >
+          VOX
+        </motion.h1>
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-[10px] uppercase tracking-[0.6em] text-black/30 font-black"
+        >
+          Sovereign Intelligence OS
+        </motion.p>
       </div>
       
-      <div className="flex flex-col items-center gap-8 w-full max-w-xs">
-        <button 
+      <div className="flex flex-col items-center gap-10 w-full max-w-sm">
+        <motion.button 
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleSignIn}
           disabled={isSigningIn}
-          className={`w-full border border-black px-6 py-4 text-xs font-black uppercase tracking-[0.3em] transition-all duration-500 overflow-hidden relative group ${isSigningIn ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black hover:text-white'}`}
+          className={`w-full bg-black text-white px-8 py-5 text-[10px] font-black uppercase tracking-[0.4em] transition-all duration-500 shadow-2xl shadow-black/20 relative group overflow-hidden ${isSigningIn ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <span className="relative z-10">{isSigningIn ? 'Connecting...' : 'Initialize System'}</span>
-          {!isSigningIn && <motion.div className="absolute inset-0 bg-black translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500" />}
-        </button>
+          <motion.div 
+            className="absolute inset-0 bg-white/10 -translate-x-full group-hover:translate-x-0 transition-transform duration-700" 
+          />
+        </motion.button>
 
         {error && (
-          <div className="space-y-4 text-center animate-in fade-in slide-in-from-bottom-2 duration-700">
-            <p className="text-[10px] uppercase tracking-widest text-red-500 font-bold">{error.title}</p>
-            <div className="space-y-1">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-5 text-center px-4"
+          >
+            <p className="text-[10px] uppercase tracking-widest text-red-500 font-black">{error.title}</p>
+            <div className="space-y-2 opacity-40">
               {error.details.map((detail, idx) => (
-                <p key={idx} className="text-[8px] uppercase tracking-[0.2em] opacity-40">• {detail}</p>
+                <p key={idx} className="text-[8px] uppercase tracking-[0.2em] font-medium">• {detail}</p>
               ))}
             </div>
-            <p className="text-[8px] uppercase tracking-widest font-black pt-4 opacity-100">Recommended: Ensure stable connection</p>
-          </div>
+            <div className="pt-4">
+              <p className="text-[9px] uppercase tracking-[0.3em] font-black opacity-100 mb-4 px-6 py-2 border border-black/5 rounded-full inline-block">Use Redirect Login Mode (Active)</p>
+              <p className="text-[8px] uppercase tracking-widest opacity-30">Standalone PWAs require standard redirect protocols.</p>
+            </div>
+          </motion.div>
         )}
+      </div>
+
+      {/* Floating Status Bar at bottom */}
+      <div className="fixed bottom-12 flex flex-col items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-[8px] font-black uppercase tracking-[0.4em] opacity-20">Network Protocol: Stable</span>
+        </div>
       </div>
     </div>
   );
@@ -828,44 +863,50 @@ export default function App() {
               <div className="flex-1 overflow-y-auto scrollbar-hide">
                 <Reorder.Group axis="y" values={reorderedApps} onReorder={handleReorder} className="flex-1">
                   <div className="grid grid-cols-4 gap-y-10 gap-x-2">
-                    {reorderedApps.map(id => {
-                      const folder = settings?.folders?.find(f => f.id === id);
-                      if (folder) {
+                      {reorderedApps.map(id => {
+                        const folder = settings?.folders?.find(f => f.id === id);
+                        if (folder) {
+                          return (
+                            <Reorder.Item key={id} value={id}>
+                              <motion.div
+                                onClick={() => setSelectedFolder(folder)}
+                                className="flex flex-col items-center gap-4 group w-full relative h-[140px] cursor-pointer"
+                              >
+                                 <div className={`w-16 h-16 sm:w-20 sm:h-20 border rounded-[2.5rem] p-3.5 grid grid-cols-2 gap-1.5 transition-all duration-500 overflow-hidden group-hover:scale-105
+                                  ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
+                                  {folder.appIds.slice(0, 4).map(appId => {
+                                    const appData = appMap[appId];
+                                    const Icon = (LucideIcons as any)[settings?.customIcons?.[appId] || ICON_MAP[appId] || 'Globe'];
+                                    return <Icon key={appId} size={12} strokeWidth={1.5} className="opacity-40" />;
+                                  })}
+                                  {folder.appIds.length === 0 && (
+                                    <div className="col-span-2 row-span-2 flex items-center justify-center">
+                                      <Layers size={14} className="opacity-10" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="w-full flex items-start justify-center">
+                                  <span className={`text-[9px] uppercase tracking-[0.1em] font-black w-full text-center px-1.5 leading-tight break-words line-clamp-2
+                                    ${settings?.theme === 'monochrome-dark' ? 'text-white/50 group-hover:text-white' : 'text-black/50 group-hover:text-black'}`}>
+                                    {folder.name}
+                                  </span>
+                                </div>
+                              </motion.div>
+                            </Reorder.Item>
+                          );
+                        }
                         return (
                           <Reorder.Item key={id} value={id}>
-                            <motion.div
-                              onClick={() => setSelectedFolder(folder)}
-                              className="flex flex-col items-center gap-3 group w-full relative h-[120px]"
-                            >
-                               <div className={`w-16 h-16 sm:w-20 sm:h-20 border rounded-[2rem] p-3 grid grid-cols-2 gap-1 transition-all duration-500 overflow-hidden
-                                ${settings?.theme === 'monochrome-dark' ? 'bg-white/10 border-white/20' : 'bg-gray-100 border-black/10'}`}>
-                                {folder.appIds.slice(0, 4).map(appId => {
-                                  const Icon = (LucideIcons as any)[settings?.customIcons?.[appId] || ICON_MAP[appId] || 'Globe'];
-                                  return <Icon key={appId} size={10} className="opacity-40" />;
-                                })}
-                              </div>
-                              <div className="w-full min-h-[44px] flex items-start justify-center pt-2">
-                                <span className={`text-[9px] uppercase tracking-[0.05em] font-black w-full text-center px-0.5 leading-tight break-words line-clamp-2
-                                  ${settings?.theme === 'monochrome-dark' ? 'text-white/50 group-hover:text-white' : 'text-black/50 group-hover:text-black'}`}>
-                                  {folder.name}
-                                </span>
-                              </div>
-                            </motion.div>
+                            <AppIcon 
+                              id={id} 
+                              name={appMap[id]?.name || id} 
+                              onClick={() => handleAppClick(id as any)} 
+                              onEdit={() => handleAppEdit(id)}
+                              settings={settings}
+                            />
                           </Reorder.Item>
                         );
-                      }
-                      return (
-                        <Reorder.Item key={id} value={id}>
-                          <AppIcon 
-                            id={id} 
-                            name={appMap[id]?.name || id} 
-                            onClick={() => handleAppClick(id as any)} 
-                            onEdit={() => handleAppEdit(id)}
-                            settings={settings}
-                          />
-                        </Reorder.Item>
-                      );
-                    })}
+                      })}
                   </div>
                 </Reorder.Group>
               </div>
@@ -897,7 +938,7 @@ export default function App() {
           {currentView === 'tasks' && <TaskView onBack={() => setCurrentView('home')} user={user} />}
           {currentView === 'focus' && <FocusView onBack={() => setCurrentView('home')} user={user} settings={settings} />}
           {currentView === 'vox' && <VoxAssistant onBack={() => setCurrentView('home')} />}
-          {currentView === 'settings' && <SettingsView onBack={() => setCurrentView('home')} user={user} settings={settings} setView={setCurrentView} createFolder={createFolder} />}
+          {currentView === 'settings' && <SettingsView onBack={() => setCurrentView('home')} user={user} settings={settings} setView={setCurrentView} createFolder={createFolder} reorderedApps={reorderedApps} appMap={appMap} />}
           {currentView === 'history' && <FocusHistoryView onBack={() => setCurrentView('home')} user={user} />}
           {currentView === 'about' && <AboutPage onBack={() => setCurrentView('settings')} />}
           {currentView === 'app-info' && <AppInfoPage onBack={() => setCurrentView('settings')} user={user} />}
@@ -1660,7 +1701,15 @@ const VoxAssistant = ({ onBack }: { onBack: () => void }) => {
   );
 };
 
-const SettingsView = ({ onBack, user, settings, setView, createFolder }: { onBack: () => void, user: FirebaseUser, settings: UserSettings | null, setView: (v: View) => void, createFolder: (ids: string[]) => void }) => {
+const SettingsView = ({ onBack, user, settings, setView, createFolder, reorderedApps, appMap }: { 
+  onBack: () => void, 
+  user: FirebaseUser, 
+  settings: UserSettings | null, 
+  setView: (v: View) => void, 
+  createFolder: (ids: string[]) => void,
+  reorderedApps: string[],
+  appMap: any
+}) => {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [selectedFolderApps, setSelectedFolderApps] = useState<string[]>([]);
   
@@ -1752,13 +1801,17 @@ const SectionHeader = ({ title, theme }: { title: string, theme: string | undefi
         <section>
            <SectionHeader title="Folders" theme={settings?.theme} />
            <div className="space-y-4">
-             {settings?.folders?.length === 0 && <p className="text-[10px] uppercase tracking-widest opacity-30 text-center py-8">No clusters defined.</p>}
+             {(!settings?.folders || settings.folders.length === 0) && (
+               <div className="text-center py-10 border border-dashed border-black/10 rounded-[2.5rem]">
+                 <p className="text-[10px] uppercase tracking-widest opacity-30 font-black">No active clusters</p>
+               </div>
+             )}
              {settings?.folders?.map(folder => (
-               <div key={folder.id} className={`flex flex-col gap-4 p-6 rounded-[2rem] border transition-all ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
+               <div key={folder.id} className={`flex flex-col gap-5 p-7 rounded-[2.5rem] border transition-all ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-2xl ${settings?.theme === 'monochrome-dark' ? 'bg-white/10' : 'bg-gray-100'}`}>
-                          <Layout size={14} className="opacity-60" />
+                    <div className="flex items-center gap-4 flex-1">
+                        <div className={`p-3 rounded-2xl ${settings?.theme === 'monochrome-dark' ? 'bg-white/10' : 'bg-gray-50'}`}>
+                          <Layers size={14} className="opacity-40" />
                         </div>
                         <input 
                           value={folder.name}
@@ -1766,61 +1819,100 @@ const SectionHeader = ({ title, theme }: { title: string, theme: string | undefi
                             const updated = settings.folders?.map(f => f.id === folder.id ? { ...f, name: e.target.value } : f) || [];
                             await updateSetting('folders', updated);
                           }}
-                          className={`bg-transparent text-[11px] uppercase font-black tracking-widest outline-none border-b border-transparent focus:border-current flex-1 min-w-0 ${settings?.theme === 'monochrome-dark' ? 'text-white' : 'text-black'}`}
+                          className={`bg-transparent text-sm uppercase font-black tracking-widest outline-none border-b border-transparent focus:border-current flex-1 min-w-0 font-sans ${settings?.theme === 'monochrome-dark' ? 'text-white' : 'text-black focus:border-black/20'}`}
                         />
                     </div>
                     <button 
                       onClick={async () => {
                         const updated = settings.folders?.filter(f => f.id !== folder.id) || [];
                         await updateSetting('folders', updated);
+                        await updateSetting('appOrder', reorderedApps.filter(id => id !== folder.id));
                       }}
-                      className="p-2 opacity-20 hover:opacity-100 hover:text-red-500 transition-all"
+                      className="p-3 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all ml-4"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={12} />
                     </button>
+                 </div>
+                 
+                 <div className="flex flex-wrap gap-2 pt-2">
+                   {folder.appIds.map(appId => (
+                     <div key={appId} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10">
+                        <span className="text-[9px] uppercase font-black tracking-widest opacity-60">{appMap[appId]?.name || appId}</span>
+                        <button 
+                          onClick={async () => {
+                            const updated = settings.folders?.map(f => f.id === folder.id ? { ...f, appIds: f.appIds.filter(id => id !== appId) } : f) || [];
+                            await updateSetting('folders', updated);
+                            await updateSetting('appOrder', [...reorderedApps, appId]);
+                          }}
+                          className="opacity-40 hover:opacity-100"
+                        >
+                          <X size={10} />
+                        </button>
+                     </div>
+                   ))}
+                   <button 
+                     onClick={() => setIsCreatingFolder(true)}
+                     className="text-[9px] uppercase font-black tracking-widest opacity-30 hover:opacity-100 flex items-center gap-1 ml-2"
+                   >
+                     <Plus size={10} /> Add
+                   </button>
                  </div>
                </div>
              ))}
 
              {isCreatingFolder ? (
-               <div className="p-8 border border-black/10 dark:border-white/10 rounded-[2.5rem] space-y-6">
-                 <p className="text-[10px] uppercase tracking-widest font-black opacity-40">Select Apps to Group</p>
-                 <div className="grid grid-cols-2 gap-3">
-                   {[...APPS, ...MOCKED_SYSTEM_APPS].map(app => (
+               <motion.div 
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="p-8 border border-black/10 dark:border-white/10 rounded-[2.5rem] space-y-8 bg-gray-50/50 dark:bg-white/5"
+               >
+                 <header className="flex justify-between items-center">
+                    <p className="text-[10px] uppercase tracking-widest font-black opacity-40">System Clustering</p>
+                    <span className="text-[8px] font-mono opacity-30">{selectedFolderApps.length} Selected</span>
+                 </header>
+                 <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto scrollbar-hide pr-1">
+                   {[...APPS, ...MOCKED_SYSTEM_APPS]
+                     .filter(app => !settings?.folders?.some(f => f.appIds.includes(app.id)))
+                     .map(app => (
                      <button 
                        key={app.id}
                        onClick={() => setSelectedFolderApps(prev => prev.includes(app.id) ? prev.filter(id => id !== app.id) : [...prev, app.id])}
-                       className={`p-3 rounded-2xl text-[10px] uppercase font-black tracking-widest border transition-all ${selectedFolderApps.includes(app.id) ? 'bg-black text-white border-black' : 'border-gray-100 opacity-40'}`}
+                       className={`flex items-center gap-3 p-4 rounded-2xl text-[9px] uppercase font-black tracking-widest border transition-all ${selectedFolderApps.includes(app.id) ? 'bg-black text-white border-black shadow-lg shadow-black/10' : 'bg-white dark:bg-[#111] border-black/5 opacity-60'}`}
                      >
+                       <div className={`w-2 h-2 rounded-full ${selectedFolderApps.includes(app.id) ? 'bg-white' : 'bg-black/10'}`} />
                        {app.name}
                      </button>
                    ))}
                  </div>
-                 <div className="flex gap-2 pt-2">
+                 <div className="flex gap-4 pt-2">
                    <button 
                      onClick={() => {
                         if (selectedFolderApps.length > 0) createFolder(selectedFolderApps);
                         setIsCreatingFolder(false);
                         setSelectedFolderApps([]);
                      }}
-                     className="flex-1 py-4 bg-black text-white rounded-2xl text-[10px] uppercase font-black tracking-widest"
+                     className="flex-1 py-5 bg-black text-white dark:bg-white dark:text-black rounded-3xl text-[10px] uppercase font-black tracking-widest shadow-xl transition-all active:scale-95"
                    >
-                     Confirm
+                     Confirm Matrix
                    </button>
                    <button 
-                     onClick={() => setIsCreatingFolder(false)}
-                     className="flex-1 py-4 border border-black/10 rounded-2xl text-[10px] uppercase font-black tracking-widest opacity-40"
+                     onClick={() => {
+                       setIsCreatingFolder(false);
+                       setSelectedFolderApps([]);
+                     }}
+                     className="flex-1 py-5 border border-black/10 dark:border-white/10 rounded-3xl text-[10px] uppercase font-black tracking-widest opacity-40 hover:opacity-100 transition-all"
                    >
                      Cancel
                    </button>
                  </div>
-               </div>
+               </motion.div>
              ) : (
                <button 
                 onClick={() => setIsCreatingFolder(true)} 
-                className="w-full py-6 rounded-[2rem] border border-dashed border-black/20 dark:border-white/20 text-[10px] uppercase font-black tracking-widest opacity-40 hover:opacity-100 transition-all"
+                className={`w-full py-7 rounded-[2.5rem] border border-dashed text-[10px] uppercase font-black tracking-widest opacity-40 hover:opacity-100 transition-all flex items-center justify-center gap-3
+                  ${settings?.theme === 'monochrome-dark' ? 'border-white/20' : 'border-black/20'}`}
                >
-                 + Initialize New Cluster
+                 <Plus size={14} strokeWidth={3} /> Initialize New Cluster
                </button>
              )}
            </div>
