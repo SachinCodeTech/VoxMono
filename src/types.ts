@@ -5,6 +5,7 @@ export interface Task {
   completed: boolean;
   createdAt: string;
   priority: 'low' | 'medium' | 'high';
+  completedAt?: string | null;
 }
 
 export type View = 'home' | 'tasks' | 'focus' | 'vox' | 'settings' | 'history' | 'about' | 'app-info' | 'privacy' | 'guide' | 'company-profile' | 'blueprint' | 'system-status';

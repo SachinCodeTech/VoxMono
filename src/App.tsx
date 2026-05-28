@@ -65,6 +65,7 @@ import {
 } from 'firebase/firestore';
 import { Task, FocusSession, UserSettings, APPS, MOCKED_SYSTEM_APPS, ICON_MAP, AVAILABLE_ICONS, View, Folder } from './types.ts';
 import { Reorder } from 'motion/react';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // --- Components ---
 
@@ -141,37 +142,43 @@ const NeuralLine = ({ theme }: { theme: string | undefined }) => (
   </div>
 );
 
-const GlobalHeader = ({ theme, view, setView, isGuest }: { theme: string | undefined, view: View, setView: (v: View) => void, isGuest?: boolean }) => (
-  <header className={`px-6 pt-12 pb-4 flex items-center justify-between sticky top-0 z-30 transition-all ${theme === 'monochrome-dark' ? 'bg-[#0a0a0a]/80' : 'bg-white/80'} backdrop-blur-xl border-b border-transparent`}>
-    <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setView('home')}>
-      <motion.div 
-        whileHover={{ scale: 1.05, rotate: 180 }}
-        whileTap={{ scale: 0.9 }}
-        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${theme === 'monochrome-dark' ? 'bg-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'bg-black shadow-premium shadow-black/10'}`}
-      >
-        <div className={`w-4 h-4 ${theme === 'monochrome-dark' ? 'bg-black' : 'bg-white'} rotate-45`} />
-      </motion.div>
-      <div className="flex flex-col justify-center">
-        <div className="flex items-baseline gap-3">
-          <span className="text-3xl font-black uppercase tracking-[0.05em] leading-none">VoxMono</span>
-          <span className="hidden sm:inline text-[9px] font-black uppercase tracking-[0.4em] opacity-40 leading-none">Sovereign OS</span>
-        </div>
-        <span className="sm:hidden text-[8px] font-black uppercase tracking-[0.4em] opacity-40 leading-none mt-1">Sovereign OS</span>
-      </div>
-    </div>
-    <div className="flex items-center gap-4">
-      <div className="flex flex-col items-end">
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border backdrop-blur-md transition-all duration-500
-          ${isGuest ? (theme === 'monochrome-dark' ? 'bg-white/10 border-white/20' : 'bg-black/5 border-black/5') : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/10'}`}>
-          <Activity size={10} className={isGuest ? "text-yellow-500 animate-pulse" : "text-green-500 animate-pulse"} />
-          <span className="text-[9px] font-black uppercase tracking-widest opacity-80 leading-none">
-            {isGuest ? 'GUEST_SYMMETRY' : 'STABLE'}
-          </span>
+const GlobalHeader = ({ theme, view, setView, isGuest, deviceFrame, isMobile }: { theme: string | undefined, view: View, setView: (v: View) => void, isGuest?: boolean, deviceFrame: string, isMobile: boolean }) => {
+  const isDark = theme === 'monochrome-dark';
+  const topPadding = (deviceFrame === 'raw' || isMobile) ? 'pt-10 pb-3' : 'pt-4 pb-2';
+  const headerBg = isDark ? 'bg-[#0a0a0c]/85' : 'bg-[#fcfcfa]/85';
+
+  return (
+    <header className={`px-6 ${topPadding} flex items-center justify-between sticky top-0 z-30 transition-all ${headerBg} backdrop-blur-xl border-b border-transparent`}>
+      <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setView('home')}>
+        <motion.div 
+          whileHover={{ scale: 1.05, rotate: 180 }}
+          whileTap={{ scale: 0.9 }}
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${isDark ? 'bg-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'bg-black shadow-[0_4px_12px_rgba(0,0,0,0.1)]'}`}
+        >
+          <div className={`w-3.5 h-3.5 ${isDark ? 'bg-black' : 'bg-white'} rotate-45`} />
+        </motion.div>
+        <div className="flex flex-col justify-center">
+          <div className="flex items-baseline gap-3">
+            <span className="text-2xl font-black uppercase tracking-[0.05em] leading-none">VoxMono</span>
+            <span className="hidden sm:inline text-[9px] font-black uppercase tracking-[0.4em] opacity-40 leading-none">Sovereign OS</span>
+          </div>
+          <span className="sm:hidden text-[8px] font-black uppercase tracking-[0.4em] opacity-40 leading-none mt-1">Sovereign OS</span>
         </div>
       </div>
-    </div>
-  </header>
-);
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col items-end">
+          <div className={`flex items-center gap-2 px-3 py-1 rounded-full border backdrop-blur-md transition-all duration-500
+            ${isGuest ? (isDark ? 'bg-white/10 border-white/20' : 'bg-slate-100 border-slate-200/80 text-slate-800') : (isDark ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200/80 text-slate-800')}`}>
+            <Activity size={10} className={isGuest ? "text-yellow-500 animate-pulse" : "text-green-500 animate-pulse"} />
+            <span className="text-[9px] font-black uppercase tracking-widest leading-none">
+              {isGuest ? 'GUEST_SYMMETRY' : 'STABLE'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
 
 const AuthScreen = ({ onGuestLogin }: { onGuestLogin: () => void }) => {
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -273,42 +280,64 @@ const AppIcon = ({ id, name, onClick, onEdit, isSystem = false, settings }: { id
   const customName = settings?.customNames?.[id] || name;
   const iconName = settings?.customIcons?.[id] || ICON_MAP[id] || 'Globe';
   const IconComponent = (LucideIcons as any)[iconName] || LucideIcons.Globe;
+  const isDark = settings?.theme === 'monochrome-dark';
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center gap-3 group w-full relative min-h-[140px]"
+      className="flex flex-col items-center gap-2 group w-full relative min-h-[105px] h-[110px]"
     >
       <motion.button
-        whileTap={{ scale: 0.98 }}
+        whileTap={{ scale: 0.96 }}
         onClick={onClick}
-        className={`w-16 h-16 sm:w-20 sm:h-20 border rounded-[2rem] flex items-center justify-center transition-all duration-300 relative
-          ${settings?.theme === 'monochrome-dark' 
-            ? 'glass-dark border-white/10' 
-            : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'} 
+        className={`w-14 h-14 border rounded-2xl flex items-center justify-center transition-all duration-300 relative
+          ${isDark 
+            ? 'glass-dark border-white/10 text-white shadow-lg' 
+            : 'bg-white border-neutral-200/80 text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:border-slate-400'} 
           ${isSystem ? 'border-dashed' : ''}`}
       >
-        <IconComponent size={24} strokeWidth={1} className="opacity-60 transition-opacity duration-300" />
+        <IconComponent size={21} strokeWidth={1.5} className="transition-all duration-300" />
       </motion.button>
 
       {onEdit && (
         <button 
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="absolute -top-1 -right-1 w-6 h-6 bg-black text-white dark:bg-white dark:text-black rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+          className="absolute -top-1 -right-1 w-5 h-5 bg-black text-white dark:bg-white dark:text-black rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10"
         >
-          <Settings size={10} />
+          <Settings size={9} />
         </button>
       )}
 
-      <div className="w-full min-h-[44px] flex items-start justify-center pt-2">
-        <span className={`text-[9px] uppercase tracking-[0.05em] font-black transition-all duration-300 w-full text-center px-0.5 leading-tight break-words line-clamp-2
-          ${settings?.theme === 'monochrome-dark' ? 'text-white/50 group-hover:text-white' : 'text-black/50 group-hover:text-black'}`}>
+      <div className="w-full min-h-[32px] flex items-start justify-center pt-1.5">
+        <span className={`text-[9px] uppercase tracking-[0.05em] transition-all duration-300 w-full text-center px-0.5 leading-tight break-words line-clamp-2
+          ${isDark ? 'text-white/60 font-medium group-hover:text-white' : 'text-slate-800/90 font-bold group-hover:text-black'}`}>
           {customName}
         </span>
       </div>
     </motion.div>
   );
+};
+
+const STOIC_QUOTES = [
+  { text: "He who is everywhere is nowhere.", author: "Seneca" },
+  { text: "The soul becomes dyed with the color of its thoughts.", author: "Marcus Aurelius" },
+  { text: "Silence is a lesson in all things.", author: "Pliny the Younger" },
+  { text: "We suffer more often in imagination than in reality.", author: "Seneca" },
+  { text: "If a man knows not to which port he sails, no wind is favorable.", author: "Seneca" },
+  { text: "Limit yourself to the present.", author: "Marcus Aurelius" },
+  { text: "It is not that we have a short time to live, but that we waste a lot of it.", author: "Seneca" },
+  { text: "Quiet minds cannot be perplexed or frightened.", author: "Seneca" },
+  { text: "The best revenge is to be unlike him who performed the injury.", author: "Marcus Aurelius" },
+  { text: "Begin at once to live, and count each separate day as a separate life.", author: "Seneca" },
+];
+
+const getDayOfYear = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const diff = now.getTime() - start.getTime();
+  const oneDay = 1000 * 60 * 60 * 24;
+  return Math.floor(diff / oneDay);
 };
 
 export default function App() {
@@ -318,29 +347,62 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [bootStatus, setBootStatus] = useState<'booting' | 'authenticating' | 'ready'>('booting');
   const [currentView, setCurrentView] = useState<View>('home');
+  const [activeCategory, setActiveCategory] = useState<'All' | 'Work' | 'Social' | 'Essential'>('All');
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [showDelay, setShowDelay] = useState(false);
   const [reorderedApps, setReorderedApps] = useState<string[]>([]);
   const [notificationPreview, setNotificationPreview] = useState<{ title: string, body: string, app: string } | null>(null);
+  const [deviceFrame, setDeviceFrame] = useState<'ios' | 'android' | 'raw'>(() => {
+    const stored = localStorage.getItem('vox_device_frame') as 'ios' | 'android' | 'raw';
+    if (stored && ['ios', 'android', 'raw'].includes(stored)) return stored;
+    return 'ios';
+  });
+  const [isMobile, setIsMobile] = useState(false);
+
+  const handleDeviceFrameChange = (frame: 'ios' | 'android' | 'raw') => {
+    setDeviceFrame(frame);
+    localStorage.setItem('vox_device_frame', frame);
+  };
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobileVal = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(mobileVal);
+      if (mobileVal) {
+        setDeviceFrame('raw');
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     // Check if guest mode was enabled previously
     const savedGuestMode = localStorage.getItem('vox_guest_mode');
     if (savedGuestMode === 'true') {
       setIsGuest(true);
-      // Initialize guest settings if they don't exist
-      setSettings(prev => prev || {
-        userId: 'guest',
-        theme: 'monochrome-light',
-        mindfulDelayEnabled: true,
-        showClock: true,
-        showWorldClock: true,
-        worldClocks: ['Asia/Kolkata'],
-        customNames: {},
-        customIcons: {},
-        folders: [],
-        appOrder: APPS.map(a => a.id)
-      });
+      const savedSettings = localStorage.getItem('vox_guest_settings');
+      if (savedSettings) {
+        try {
+          setSettings(JSON.parse(savedSettings));
+        } catch (e) {
+          console.error("Failed parsing guest settings", e);
+        }
+      } else {
+        setSettings({
+          userId: 'guest',
+          theme: 'monochrome-light',
+          mindfulDelayEnabled: true,
+          showClock: true,
+          showWorldClock: true,
+          worldClocks: ['Asia/Kolkata'],
+          customNames: {},
+          customIcons: {},
+          folders: [],
+          appOrder: APPS.map(a => a.id)
+        });
+      }
     }
 
     // Initial Auth Listener
@@ -375,18 +437,34 @@ export default function App() {
     localStorage.setItem('vox_guest_mode', 'true');
     setLoading(false);
     setShowSplash(false);
-    setSettings({
-      userId: 'guest',
-      theme: 'monochrome-light',
-      mindfulDelayEnabled: true,
-      showClock: true,
-      showWorldClock: true,
-      worldClocks: ['Asia/Kolkata'],
-      customNames: {},
-      customIcons: {},
-      folders: [],
-      appOrder: APPS.map(a => a.id)
-    });
+    
+    const savedSettings = localStorage.getItem('vox_guest_settings');
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      setSettings({
+        userId: 'guest',
+        theme: 'monochrome-light',
+        mindfulDelayEnabled: true,
+        showClock: true,
+        showWorldClock: true,
+        worldClocks: ['Asia/Kolkata'],
+        focusDuration: 25,
+        breakDuration: 5,
+        systemAppLinks: {
+          browser: 'https://google.com'
+        },
+        customNames: {},
+        customIcons: {},
+        folders: [],
+        blockedWebsites: [],
+        appOrder: APPS.map(a => a.id)
+      });
+    }
   };
 
   const [editingApp, setEditingApp] = useState<string | null>(null);
@@ -430,9 +508,27 @@ export default function App() {
   }, [user]);
 
   const updateSettings = async (updates: Partial<UserSettings>) => {
+    if (isGuest) {
+      const newSettings = { ...settings, ...updates } as UserSettings;
+      setSettings(newSettings);
+      localStorage.setItem('vox_guest_settings', JSON.stringify(newSettings));
+      return;
+    }
     if (!user) return;
     const settingsDoc = doc(db, 'users', user.uid, 'settings', 'global');
     await updateDoc(settingsDoc, updates);
+  };
+
+  const handleSignOut = () => {
+    if (isGuest) {
+      setIsGuest(false);
+      localStorage.removeItem('vox_guest_mode');
+      localStorage.removeItem('vox_guest_settings');
+      setSettings(null);
+      setCurrentView('home');
+      return;
+    }
+    auth.signOut();
   };
 
   const createFolder = async (appIds: string[]) => {
@@ -469,6 +565,10 @@ export default function App() {
 
   const handleReorder = async (newOrder: string[]) => {
     setReorderedApps(newOrder);
+    if (isGuest) {
+      await updateSettings({ appOrder: newOrder });
+      return;
+    }
     if (!user) return;
     const settingsDoc = doc(db, 'users', user.uid, 'settings', 'global');
     await updateDoc(settingsDoc, { appOrder: newOrder });
@@ -534,7 +634,7 @@ export default function App() {
   const appMap = [...APPS, ...MOCKED_SYSTEM_APPS].reduce((acc, app) => ({ ...acc, [app.id]: app }), {} as any);
 
   const BottomNav = () => (
-    <div className={`fixed bottom-0 inset-x-0 z-40 border-t ${settings?.theme === 'monochrome-dark' ? 'bg-[#0a0a0a]/90 border-white/10 text-white' : 'bg-white/90 border-gray-100 text-black'} backdrop-blur-xl px-4 pb-10 pt-4`}>
+    <div className={`${deviceFrame === 'raw' ? 'fixed' : 'absolute'} bottom-0 inset-x-0 z-40 border-t ${settings?.theme === 'monochrome-dark' ? 'bg-[#0a0a0c]/95 border-white/10 text-white' : 'bg-white/95 border-slate-200/80 text-slate-900 shadow-[0_-8px_32px_rgba(0,0,0,0.03)]'} backdrop-blur-xl px-4 ${deviceFrame === 'raw' ? 'pb-8 pt-4' : 'pb-4 pt-2'} transition-all duration-300`}>
       <div className="flex justify-between items-center max-w-sm mx-auto relative px-2">
         {[
           { id: 'home', icon: Home, label: 'Home' },
@@ -545,27 +645,146 @@ export default function App() {
         ].map(item => (
           <button 
             key={item.id}
-            onClick={() => setCurrentView(item.id as any)}
-            className={`flex flex-col items-center gap-1.5 transition-all relative ${currentView === item.id ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
+            onClick={() => {
+              setCurrentView(item.id as any);
+            }}
+            className={`flex flex-col items-center gap-1 transition-all relative ${currentView === item.id ? 'opacity-100 scale-102 font-bold' : 'opacity-65 hover:opacity-100 font-medium'}`}
           >
-            <div className={`p-2 transition-all duration-500 relative`}>
-              <item.icon size={22} strokeWidth={currentView === item.id ? 2.5 : 1} className={`relative z-10 ${currentView === item.id ? (settings?.theme === 'monochrome-dark' ? 'text-white' : 'text-black') : (settings?.theme === 'monochrome-dark' ? 'text-white/40' : 'text-black/40')}`} />
+            <div className="p-1 transition-all duration-500 relative">
+              <item.icon size={20} strokeWidth={currentView === item.id ? 2.5 : 1.5} className={`relative z-10 ${currentView === item.id ? (settings?.theme === 'monochrome-dark' ? 'text-white' : 'text-slate-950') : (settings?.theme === 'monochrome-dark' ? 'text-white/60' : 'text-slate-500')}`} />
               {currentView === item.id && (
                 <motion.div 
                   layoutId="activeIndicator"
-                  className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full ${settings?.theme === 'monochrome-dark' ? 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.4)]' : 'bg-black shadow-[0_0_12px_rgba(0,0,0,0.2)]'}`} 
+                  className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-7 h-0.5 rounded-full ${settings?.theme === 'monochrome-dark' ? 'bg-white shadow-[0_0_12px_rgba(255,255,255,0.5)]' : 'bg-slate-950 shadow-[0_0_12px_rgba(0,0,0,0.3)]'}`} 
                 />
               )}
             </div>
-            <span className={`text-[8px] uppercase tracking-[0.25em] font-black transition-all ${currentView === item.id ? 'opacity-100' : 'opacity-40'}`}>{item.label}</span>
+            <span className={`text-[8px] uppercase tracking-[0.2em] font-black transition-all ${currentView === item.id ? 'opacity-100' : 'opacity-65 font-bold'}`}>{item.label}</span>
           </button>
         ))}
       </div>
     </div>
-  );
+  );  const renderWorkspace = (content: React.ReactNode) => {
+    if (showSplash) {
+      return content;
+    }
+
+    const themeBg = settings?.theme === 'monochrome-dark' 
+      ? 'bg-[#0a0a0c] text-white' 
+      : 'bg-white text-black';
+    const isDark = settings?.theme === 'monochrome-dark';
+
+    if (deviceFrame === 'raw' || isMobile) {
+      return (
+        <motion.div 
+          className={`w-full min-h-screen flex flex-col relative ${themeBg}`}
+          onWheel={(e) => {
+            if (e.deltaY > 50 && currentView === 'home') setCurrentView('vox');
+            if (e.deltaY < -50 && currentView === 'vox') setCurrentView('home');
+          }}
+          onPanEnd={(_, info) => {
+            if (info.offset.y < -100 && currentView === 'home') setCurrentView('vox');
+            if (info.offset.y > 100 && currentView === 'vox') setCurrentView('home');
+            
+            if (info.offset.x < -100 && currentView === 'home') setCurrentView('tasks');
+            if (info.offset.x > 100 && currentView === 'tasks') setCurrentView('home');
+          }}
+        >
+          {content}
+        </motion.div>
+      );
+    }
+
+    if (deviceFrame === 'ios') {
+      return (
+        <div className="w-full min-h-screen pt-16 pb-12 flex items-center justify-center bg-[#07080d] relative overflow-y-auto selection:bg-white selection:text-black transition-all duration-500">
+          {/* Ambient desk glow */}
+          <div className="absolute inset-0 bg-radial-at-t from-[#1b1e32] via-[#07080d] to-[#010103] opacity-95 -z-10" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:32px_32px] opacity-30 -z-10" />
+          
+          {/* iPhone 15 Pro Hardware Frame */}
+          <div className="relative w-[385px] h-[812px] rounded-[3.2rem] border-[10px] border-[#1d1e22] bg-[#0a0a0c] shadow-[0_25px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden ring-1 ring-white/10">
+            {/* Dynamic Island */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-6.5 bg-black rounded-full z-50 border border-white/5 shadow-inner flex items-center justify-between px-3 select-none hover:scale-x-105 transition-all duration-300">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#0d0d18]" />
+              <span className="text-[7.5px] uppercase font-black tracking-[0.2em] text-emerald-400 animate-pulse">flow on</span>
+              <div className="w-1.5 h-1.5 rounded-full border border-gray-950 bg-emerald-500" />
+            </div>
+
+            {/* iOS Status Bar */}
+            <div className={`h-10 px-6 pt-3 flex justify-between items-center bg-transparent z-45 text-[9.5px] font-black select-none ${isDark ? 'text-white' : 'text-black'}`}>
+              <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+              <div className="flex items-center gap-1.5 opacity-90">
+                <LucideIcons.Signal size={10} />
+                <span className="text-[7.5px] uppercase font-black">LTE</span>
+                <LucideIcons.Wifi size={10} />
+                <LucideIcons.Battery size={13} className="opacity-80" />
+              </div>
+            </div>
+
+            {/* Viewport content */}
+            <div className={`flex-1 overflow-y-auto scrollbar-hide relative pb-20 ${themeBg}`}>
+              {content}
+            </div>
+
+            {/* Bottom Gesture Line */}
+            <div className={`absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 rounded-full z-40 pointer-events-none ${isDark ? 'bg-white/40' : 'bg-black/40'}`} />
+          </div>
+        </div>
+      );
+    }
+
+    if (deviceFrame === 'android') {
+      return (
+        <div className="w-full min-h-screen pt-16 pb-12 flex items-center justify-center bg-[#05060a] relative overflow-y-auto selection:bg-white selection:text-black transition-all duration-500">
+          {/* Ambient desk glow */}
+          <div className="absolute inset-0 bg-radial-at-t from-[#201530] via-[#05060a] to-[#010103] opacity-95 -z-10" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:40px_40px] opacity-35 -z-10" />
+
+          {/* Android Pixel Hardware Frame */}
+          <div className="relative w-[385px] h-[812px] rounded-[2.8rem] border-[11px] border-[#222328] bg-[#0a0a0c] shadow-[0_25px_60px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden ring-1 ring-white/10">
+            {/* Selfie camera punchhole */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#0a0a0c] border border-white/5 rounded-full z-50 flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#1c1c38]" />
+            </div>
+
+            {/* Android Status Bar */}
+            <div className={`h-10 px-6 pt-2 flex justify-between items-center bg-transparent z-45 text-[9.5px] font-black select-none ${isDark ? 'text-white' : 'text-black'}`}>
+              <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+              <div className="flex items-center gap-1.5 opacity-90">
+                <span className="text-[7.5px] uppercase font-black">5G</span>
+                <div className="flex items-center gap-0.5">
+                  <div className={`w-1 h-1.5 rounded-2xs ${isDark ? 'bg-white' : 'bg-black'}`} />
+                  <div className={`w-1 h-2 rounded-2xs ${isDark ? 'bg-white' : 'bg-black'}`} />
+                  <div className={`w-1 h-2.5 rounded-2xs ${isDark ? 'bg-white' : 'bg-black'}`} />
+                  <div className={`w-1 h-3 rounded-2xs opacity-40 ${isDark ? 'bg-white' : 'bg-black'}`} />
+                </div>
+                <LucideIcons.BatteryMedium size={12} className="opacity-80" />
+              </div>
+            </div>
+
+            {/* Viewport content */}
+            <div className={`flex-1 overflow-y-auto scrollbar-hide relative pb-20 ${themeBg}`}>
+              {content}
+            </div>
+
+            {/* Bottom Gesture Line */}
+            <div className={`absolute bottom-1.5 left-1/2 -translate-x-1/2 w-28 h-1 rounded-full z-40 pointer-events-none ${isDark ? 'bg-white/30' : 'bg-black/30'}`} />
+          </div>
+        </div>
+      );
+    }
+
+    return content;
+  };
+
+  const isDark = settings?.theme === 'monochrome-dark';
+  const rootBg = (isMobile || deviceFrame === 'raw') 
+    ? (isDark ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black')
+    : 'bg-[#07080d] text-white';
 
   return (
-    <div className={`min-h-screen ${settings?.theme === 'monochrome-dark' ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black'} font-sans transition-colors duration-500 overflow-hidden relative selection:bg-black selection:text-white`}>
+    <div className={`min-h-screen ${rootBg} font-sans transition-colors duration-500 overflow-hidden relative selection:bg-black selection:text-white`}>
       
       <AnimatePresence>
         {showSplash && <SplashScreen status={bootStatus} onComplete={() => setShowSplash(false)} />}
@@ -762,61 +981,78 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <motion.div 
-        className="max-w-md mx-auto min-h-screen flex flex-col relative" 
-        onWheel={(e) => {
-          if (e.deltaY > 50 && currentView === 'home') setCurrentView('vox');
-          if (e.deltaY < -50 && currentView === 'vox') setCurrentView('home');
-        }}
-        onPanEnd={(_, info) => {
-          if (info.offset.y < -100 && currentView === 'home') setCurrentView('vox');
-          if (info.offset.y > 100 && currentView === 'vox') setCurrentView('home');
-          
-          if (info.offset.x < -100 && currentView === 'home') setCurrentView('tasks');
-          if (info.offset.x > 100 && currentView === 'tasks') setCurrentView('home');
-        }}
-      >
-        {/* Global Header */}
-        {!showSplash && (user || isGuest) && (
-          <GlobalHeader theme={settings?.theme} view={currentView} setView={setCurrentView} isGuest={isGuest} />
-        )}
+      {/* Universal Workspace Control Panel Chassis Switcher */}
+      {!showSplash && (user || isGuest) && !isMobile && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-3.5 py-1.5 bg-black/90 border border-white/10 text-white rounded-full flex items-center gap-2 shadow-2xl backdrop-blur-xl transition-all hover:scale-[1.01] hover:bg-black">
+          <div className="flex items-center gap-1 opacity-70 border-r border-white/10 pr-2 select-none">
+            <LucideIcons.Globe size={11} className="text-blue-500 animate-pulse" />
+            <span className="text-[7.5px] tracking-[0.25em] font-black uppercase">Chassis:</span>
+          </div>
+          <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-full">
+            {[
+              { id: 'ios' as const, label: 'iOS', icon: LucideIcons.Smartphone },
+              { id: 'android' as const, label: 'Android', icon: LucideIcons.Tv },
+              { id: 'raw' as const, label: 'Raw OS', icon: LucideIcons.Maximize2 }
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => handleDeviceFrameChange(f.id)}
+                className={`px-2 py-0.5 rounded-full text-[8px] uppercase tracking-wider font-extrabold transition-all duration-350 flex items-center gap-1
+                  ${deviceFrame === f.id 
+                    ? 'bg-white text-black shadow-md scale-105 font-black' 
+                    : 'opacity-55 hover:opacity-100 text-white hover:bg-white/10'}`}
+              >
+                <f.icon size={9} />
+                <span>{f.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <AnimatePresence mode="wait">
+      {renderWorkspace(
+        <>
+          {/* Global Header */}
+          {!showSplash && (user || isGuest) && (
+            <GlobalHeader theme={settings?.theme} view={currentView} setView={setCurrentView} isGuest={isGuest} deviceFrame={deviceFrame} isMobile={isMobile} />
+          )}
+
+          <AnimatePresence mode="wait">
           {(user || isGuest) && currentView === 'home' && (
             <motion.div
               key="home"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.02 }}
-              className="flex-1 p-8 pt-10 flex flex-col pb-32"
+              className="flex-1 px-5 py-3 flex flex-col pb-24"
             >
               {/* Launcher Search */}
-              <div className="mb-8 relative">
-                <div className={`flex items-center gap-3 px-5 py-4 rounded-3xl border ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-black/5'} transition-all focus-within:border-black/20`}>
-                  <Globe size={18} className="opacity-30" />
+              <div className="mb-5 relative">
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-[1.25rem] border ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200/80 text-slate-800'} transition-all focus-within:border-black/20 dark:focus-within:border-white/30 shadow-sm`}>
+                  <Globe size={16} className="opacity-40" />
                   <input 
                     type="text" 
                     placeholder="Search System or Web..." 
-                    className="bg-transparent border-none outline-none text-xs w-full uppercase tracking-widest placeholder:opacity-40"
+                    className="bg-transparent border-none outline-none text-xs w-full uppercase tracking-widest placeholder:opacity-40 font-medium"
                   />
                 </div>
               </div>
 
               {/* Time & Productivity Widget */}
               {settings?.showClock && (
-                <div className="mb-12 flex flex-col items-center">
-                  <p className="text-[10px] uppercase tracking-[0.4em] font-black opacity-30 mb-2">
+                <div className="mb-5 flex flex-col items-center">
+                  <p className="text-[9px] uppercase tracking-[0.35em] font-extrabold text-neutral-500 dark:text-neutral-400 mb-1">
                     {isGuest ? 'Guest Protocol Active' : 'Good Day, Explorer'}
                   </p>
                   <div className="relative group">
                     <motion.h2 
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="text-8xl font-thin tracking-[-0.08em] transition-all duration-700 group-hover:tracking-normal"
+                      className="text-6xl sm:text-7xl font-extralight tracking-[-0.05em] transition-all duration-700 group-hover:tracking-normal leading-none"
                     >
                       {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).split(' ')[0]}
                     </motion.h2>
-                    <div className="absolute -right-12 bottom-4 text-4xl font-thin tracking-tighter opacity-20">
+                    <div className="absolute -right-10 bottom-1.5 text-xl font-light tracking-tighter opacity-30">
                       {new Date().getHours() >= 12 ? 'PM' : 'AM'}
                     </div>
                   </div>
@@ -825,7 +1061,7 @@ export default function App() {
                     <motion.div 
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex gap-6 mt-4 opacity-30 select-none"
+                      className="flex gap-5 mt-2.5 text-neutral-500 dark:text-neutral-400 select-none font-medium"
                     >
                       {(settings.worldClocks || [
                         'Europe/London', 
@@ -835,10 +1071,10 @@ export default function App() {
                         try {
                           return (
                             <div key={tz} className="flex flex-col items-center">
-                              <span className="text-[7px] font-black uppercase tracking-widest mb-0.5">
+                              <span className="text-[7px] font-bold uppercase tracking-widest mb-0.5">
                                 {tz.split('/').pop()?.replace('_', ' ').substring(0, 3)}
                               </span>
-                              <span className="text-[10px] font-mono tracking-tighter">
+                              <span className="text-[9px] font-mono tracking-tighter">
                                 {new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' })}
                               </span>
                             </div>
@@ -849,127 +1085,217 @@ export default function App() {
                       })}
                     </motion.div>
                   )}
+
+                  {/* Daily Focus Quote / Stoic Reflection */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`mt-4 mb-2 px-5 py-3.5 rounded-3xl border text-center max-w-[310px] shadow-[0_4px_16px_rgba(0,0,0,0.01)] relative group overflow-hidden
+                      ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50/80 border-slate-200/60'}`}
+                  >
+                    <p className={`text-[11px] leading-relaxed font-serif font-medium
+                      ${settings?.theme === 'monochrome-dark' ? 'text-white/80' : 'text-slate-800'}`}>
+                      "{STOIC_QUOTES[getDayOfYear() % STOIC_QUOTES.length].text}"
+                    </p>
+                    <p className="text-[8px] uppercase tracking-widest text-slate-500 dark:text-white/40 font-bold mt-2 font-mono">
+                      — {STOIC_QUOTES[getDayOfYear() % STOIC_QUOTES.length].author}
+                    </p>
+                  </motion.div>
                   
-                  <div className="flex items-center gap-6 mt-6">
+                  <div className="flex items-center gap-5 mt-4 text-neutral-500 dark:text-neutral-400">
                     <div className="flex flex-col items-center">
-                      <span className="text-[8px] uppercase tracking-widest font-black opacity-30 mb-1">Goal</span>
-                      <span className="text-xs font-mono">4H 00M</span>
+                      <span className="text-[8px] uppercase tracking-widest font-extrabold text-slate-500 dark:text-white/40 mb-0.5">Goal</span>
+                      <span className="text-[11px] font-mono font-semibold text-slate-800 dark:text-white">4H 00M</span>
                     </div>
-                    <div className="w-px h-6 bg-current opacity-10" />
+                    <div className="w-px h-5 bg-current opacity-15" />
                     <div className="flex flex-col items-center">
-                      <span className="text-[8px] uppercase tracking-widest font-black opacity-30 mb-1">Score</span>
+                      <span className="text-[8px] uppercase tracking-widest font-extrabold text-slate-500 dark:text-white/40 mb-0.5">Score</span>
                       <div className="flex items-center gap-1">
-                        <Activity size={10} className="text-green-500" />
-                        <span className="text-xs font-black">9.2</span>
+                        <Activity size={9} className="text-green-500" />
+                        <span className="text-[11px] font-extrabold text-slate-800 dark:text-white">9.2</span>
                       </div>
                     </div>
-                    <div className="w-px h-6 bg-current opacity-10" />
+                    <div className="w-px h-5 bg-current opacity-15" />
                     <div className="flex flex-col items-center">
-                      <span className="text-[8px] uppercase tracking-widest font-black opacity-30 mb-1">Focus</span>
-                      <span className="text-xs font-mono">2H 45M</span>
+                      <span className="text-[8px] uppercase tracking-widest font-extrabold text-slate-500 dark:text-white/40 mb-0.5">Focus</span>
+                      <span className="text-[11px] font-mono font-semibold text-slate-800 dark:text-white">2H 45M</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Intelligence Strip */}
-              <div className="mb-12">
-                 <div className={`p-6 rounded-[2.5rem] flex items-center justify-between shadow-premium transition-all relative overflow-hidden
-                  ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border border-white/5' : 'bg-white border border-black/5 shadow-black/5'}`}>
+              <div className="mb-5">
+                 <div className={`p-4 px-5 rounded-[1.75rem] flex items-center justify-between shadow-[0_4px_16px_rgba(0,0,0,0.015)] transition-all relative overflow-hidden
+                  ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border border-white/5' : 'bg-slate-50 border border-slate-200/80 shadow-sm'}`}>
                    <div className="flex items-center gap-4 relative z-10">
-                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${settings?.theme === 'monochrome-dark' ? 'bg-white/10' : 'bg-gray-50 border border-black/5'}`}>
+                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${settings?.theme === 'monochrome-dark' ? 'bg-white/10' : 'bg-white border border-slate-200 shadow-sm'}`}>
                        <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
                        >
-                         <Target size={20} strokeWidth={1.5} className="text-green-500" />
+                         <Target size={18} strokeWidth={2} className="text-green-500" />
                        </motion.div>
                      </div>
                      <div>
-                       <div className="flex items-center gap-2 mb-1">
-                         <span className="text-[9px] uppercase tracking-[0.3em] font-black opacity-30">Neural Update</span>
+                       <div className="flex items-center gap-2 mb-0.5">
+                         <span className="text-[9px] uppercase tracking-[0.25em] font-extrabold text-slate-500 dark:text-white/40">Neural Update</span>
                          <span className="w-1 h-1 rounded-full bg-green-500" />
                        </div>
-                       <p className="text-[11px] font-black tracking-tight leading-tight">12% more efficient today than your average.</p>
+                       <p className="text-[11px] font-bold tracking-tight leading-tight text-neutral-800 dark:text-white">12% more efficient today than average.</p>
                      </div>
                    </div>
                    <motion.div 
-                    whileHover={{ x: 3 }}
-                    className="relative z-10 p-2"
+                    whileHover={{ x: 2 }}
+                    className="relative z-10 p-1"
                    >
-                    <ArrowRight size={16} className="opacity-30" />
+                    <ArrowRight size={14} className="opacity-40" />
                    </motion.div>
                    
                    {/* Background pulse */}
-                   <div className="absolute -right-10 -top-10 w-40 h-40 bg-green-500/5 blur-[40px] rounded-full pointer-events-none" />
+                    <div className="absolute -right-10 -top-10 w-40 h-40 bg-green-500/5 blur-[40px] rounded-full pointer-events-none" />
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-12">
-                <div className={`p-6 rounded-[2.5rem] border ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5 shadow-2xl shadow-black/40' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
-                  <p className="text-[8px] uppercase tracking-[0.4em] font-black opacity-30 mb-3">Core Session</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-thin tracking-tight">14</span>
-                    <span className="text-[9px] uppercase font-black opacity-40 tracking-widest">Days</span>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className={`p-4 rounded-[1.75rem] border ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5 shadow-lg' : 'bg-slate-50 border-slate-200/85 shadow-[0_3px_10px_rgba(0,0,0,0.01)]'}`}>
+                  <p className="text-[8px] uppercase tracking-[0.4em] font-extrabold text-slate-500 dark:text-white/40 mb-2">Core Session</p>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-light tracking-tight">14</span>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 trailing-widest">Days</span>
                   </div>
                 </div>
-                <div className={`p-6 rounded-[2.5rem] border ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5 shadow-2xl shadow-black/40' : 'bg-white border-black/5 shadow-premium shadow-black/[0.02]'}`}>
-                  <p className="text-[8px] uppercase tracking-[0.4em] font-black opacity-30 mb-3">Neural Load</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-thin tracking-tight">1.8</span>
-                    <span className="text-[9px] uppercase font-black opacity-40 tracking-widest">Hrs</span>
+                <div className={`p-4 rounded-[1.75rem] border ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5 shadow-lg' : 'bg-slate-50 border-slate-200/85 shadow-[0_3px_10px_rgba(0,0,0,0.01)]'}`}>
+                  <p className="text-[8px] uppercase tracking-[0.4em] font-extrabold text-slate-500 dark:text-white/40 mb-2">Neural Load</p>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-light tracking-tight">1.8</span>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 trailing-widest">Hrs</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex gap-1.5 mb-5 justify-center overflow-x-auto pb-1 scrollbar-hide">
+                {(['All', 'Work', 'Social', 'Essential'] as const).map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`px-3.5 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-black border transition-all duration-300 cursor-pointer
+                      ${activeCategory === cat 
+                        ? (settings?.theme === 'monochrome-dark' ? 'bg-white text-black border-white shadow-lg' : 'bg-slate-900 text-white border-slate-900 shadow-sm')
+                        : (settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/5 text-white/50 hover:text-white hover:bg-white/10' : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-black hover:bg-slate-100')
+                      }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
 
               {/* Main Apps - Draggable */}
               <div className="flex-1 overflow-y-auto scrollbar-hide">
-                <Reorder.Group axis="y" values={reorderedApps} onReorder={handleReorder} className="flex-1">
-                  <div className="grid grid-cols-4 gap-y-10 gap-x-2">
-                    {reorderedApps.map(id => {
-                      const folder = settings?.folders?.find(f => f.id === id);
-                      if (folder) {
+                {activeCategory === 'All' ? (
+                  <Reorder.Group axis="y" values={reorderedApps} onReorder={handleReorder} className="flex-1">
+                    <div className="grid grid-cols-4 gap-y-5 gap-x-1.5">
+                      {reorderedApps.map(id => {
+                        const folder = settings?.folders?.find(f => f.id === id);
+                        if (folder) {
+                          return (
+                            <Reorder.Item key={id} value={id}>
+                              <motion.div
+                                onClick={() => setSelectedFolder(folder)}
+                                className="flex flex-col items-center gap-2 group w-full relative min-h-[105px] h-[110px] cursor-pointer"
+                              >
+                                 <div className={`w-14 h-14 border rounded-2xl p-2.5 grid grid-cols-2 gap-1 transition-all duration-500 overflow-hidden
+                                  ${settings?.theme === 'monochrome-dark' ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.02)]'}`}>
+                                  {folder.appIds.slice(0, 4).map(appId => {
+                                    const Icon = (LucideIcons as any)[settings?.customIcons?.[appId] || ICON_MAP[appId] || 'Globe'];
+                                    return <Icon key={appId} size={9} className="opacity-50 text-slate-700 dark:text-white" />;
+                                  })}
+                                </div>
+                                <div className="w-full min-h-[32px] flex items-start justify-center pt-1.5">
+                                  <span className={`text-[9px] uppercase tracking-[0.05em] w-full text-center px-0.5 leading-tight break-words line-clamp-2
+                                    ${settings?.theme === 'monochrome-dark' ? 'text-white/60 font-medium group-hover:text-white' : 'text-slate-800/90 font-bold group-hover:text-black'}`}>
+                                    {folder.name}
+                                  </span>
+                                </div>
+                              </motion.div>
+                            </Reorder.Item>
+                          );
+                        }
                         return (
                           <Reorder.Item key={id} value={id}>
+                            <AppIcon 
+                              id={id} 
+                              name={appMap[id]?.name || id} 
+                              onClick={() => handleAppClick(id as any)} 
+                              onEdit={() => handleAppEdit(id)}
+                              settings={settings}
+                            />
+                          </Reorder.Item>
+                        );
+                      })}
+                    </div>
+                  </Reorder.Group>
+                ) : (
+                  <div className="grid grid-cols-4 gap-y-5 gap-x-1.5 animate-fadeIn">
+                    {reorderedApps
+                      .filter(id => {
+                        const folder = settings?.folders?.find(f => f.id === id);
+                        if (folder) {
+                          const appCategories: Record<string, string> = {
+                            tasks: 'Work', focus: 'Work', vox: 'Essential', settings: 'Essential',
+                            phone: 'Essential', messages: 'Social', mail: 'Work', camera: 'Social', browser: 'Work'
+                          };
+                          return folder.appIds.some(appId => appCategories[appId] === activeCategory);
+                        }
+                        const appCategories: Record<string, string> = {
+                          tasks: 'Work', focus: 'Work', vox: 'Essential', settings: 'Essential',
+                          phone: 'Essential', messages: 'Social', mail: 'Work', camera: 'Social', browser: 'Work'
+                        };
+                        return appCategories[id] === activeCategory;
+                      })
+                      .map(id => {
+                        const folder = settings?.folders?.find(f => f.id === id);
+                        if (folder) {
+                          return (
                             <motion.div
+                              key={id}
                               onClick={() => setSelectedFolder(folder)}
-                              className="flex flex-col items-center gap-3 group w-full relative h-[120px]"
+                              className="flex flex-col items-center gap-2 group w-full relative min-h-[105px] h-[110px] cursor-pointer"
                             >
-                               <div className={`w-16 h-16 sm:w-20 sm:h-20 border rounded-[2rem] p-3 grid grid-cols-2 gap-1 transition-all duration-500 overflow-hidden
-                                ${settings?.theme === 'monochrome-dark' ? 'bg-white/10 border-white/20' : 'bg-gray-100 border-black/10'}`}>
+                               <div className={`w-14 h-14 border rounded-2xl p-2.5 grid grid-cols-2 gap-1 transition-all duration-500 overflow-hidden
+                                ${settings?.theme === 'monochrome-dark' ? 'bg-white/10 border-white/20' : 'bg-slate-50 border-slate-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.02)]'}`}>
                                 {folder.appIds.slice(0, 4).map(appId => {
                                   const Icon = (LucideIcons as any)[settings?.customIcons?.[appId] || ICON_MAP[appId] || 'Globe'];
-                                  return <Icon key={appId} size={10} className="opacity-40" />;
+                                  return <Icon key={appId} size={9} className="opacity-50 text-slate-700 dark:text-white" />;
                                 })}
                               </div>
-                              <div className="w-full min-h-[44px] flex items-start justify-center pt-2">
-                                <span className={`text-[9px] uppercase tracking-[0.05em] font-black w-full text-center px-0.5 leading-tight break-words line-clamp-2
-                                  ${settings?.theme === 'monochrome-dark' ? 'text-white/50 group-hover:text-white' : 'text-black/50 group-hover:text-black'}`}>
+                              <div className="w-full min-h-[32px] flex items-start justify-center pt-1.5">
+                                <span className={`text-[9px] uppercase tracking-[0.05em] w-full text-center px-0.5 leading-tight break-words line-clamp-2
+                                  ${settings?.theme === 'monochrome-dark' ? 'text-white/60 font-medium group-hover:text-white' : 'text-slate-800/90 font-bold group-hover:text-black'}`}>
                                   {folder.name}
                                 </span>
                               </div>
                             </motion.div>
-                          </Reorder.Item>
-                        );
-                      }
-                      return (
-                        <Reorder.Item key={id} value={id}>
+                          );
+                        }
+                        return (
                           <AppIcon 
+                            key={id}
                             id={id} 
                             name={appMap[id]?.name || id} 
                             onClick={() => handleAppClick(id as any)} 
                             onEdit={() => handleAppEdit(id)}
                             settings={settings}
                           />
-                        </Reorder.Item>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
-                </Reorder.Group>
+                )}
               </div>
 
               {/* Bottom Fixed Dock */}
-              <div className={`mt-8 pt-8 border-t ${settings?.theme === 'monochrome-dark' ? 'border-white/5' : 'border-black/5'} flex justify-between items-center px-2`}>
+              <div className={`mt-5 pt-4 border-t ${settings?.theme === 'monochrome-dark' ? 'border-white/5' : 'border-slate-200/80'} flex justify-between items-center px-2`}>
                 {[
                   { id: 'phone', label: 'Call', icon: LucideIcons.Phone },
                   { id: 'messages', label: 'Comm', icon: LucideIcons.MessageSquare },
@@ -979,12 +1305,13 @@ export default function App() {
                   <button 
                     key={dockApp.id}
                     onClick={() => handleSystemAppClick(dockApp.id)}
-                    className="flex flex-col items-center gap-3 group px-2"
+                    className="flex flex-col items-center gap-1.5 group px-2"
                   >
-                    <div className={`w-14 h-14 rounded-full flex items-center justify-center border transition-all duration-300 ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/40' : 'bg-white border-black/5 shadow-sm group-hover:bg-gray-50 group-hover:border-black/20'}`}>
-                      <dockApp.icon size={20} strokeWidth={1} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-300 ${settings?.theme === 'monochrome-dark' ? 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/40' : 'bg-white border-slate-200/80 shadow-[0_4px_12px_rgba(0,0,0,0.02)] group-hover:bg-slate-50'}`}>
+                      <dockApp.icon size={18} strokeWidth={1.5} className={`transition-opacity ${settings?.theme === 'monochrome-dark' ? 'text-white opacity-70 group-hover:opacity-100' : 'text-slate-800'}`} />
                     </div>
-                    <span className="text-[9px] uppercase tracking-[0.1em] font-black opacity-40 group-hover:opacity-100 transition-opacity">{dockApp.label}</span>
+                    <span className={`text-[9px] uppercase tracking-[0.1em] transition-opacity
+                      ${settings?.theme === 'monochrome-dark' ? 'text-white/40 group-hover:text-white font-medium' : 'text-slate-600 font-extrabold'}`}>{dockApp.label}</span>
                   </button>
                 ))}
               </div>
@@ -994,9 +1321,9 @@ export default function App() {
 
           {(user || isGuest) && currentView === 'tasks' && <TaskView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} />}
           {(user || isGuest) && currentView === 'focus' && <FocusView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} settings={settings} />}
-          {(user || isGuest) && currentView === 'vox' && <VoxAssistant onBack={() => setCurrentView('home')} />}
-          {(user || isGuest) && currentView === 'settings' && <SettingsView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} settings={settings} setView={setCurrentView} createFolder={createFolder} />}
-          {(user || isGuest) && currentView === 'history' && <FocusHistoryView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} />}
+          {(user || isGuest) && currentView === 'vox' && <VoxAssistant onBack={() => setCurrentView('home')} settings={settings} />}
+          {(user || isGuest) && currentView === 'settings' && <SettingsView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} settings={settings} setView={setCurrentView} createFolder={createFolder} onUpdateSettings={updateSettings} onSignOut={handleSignOut} />}
+          {(user || isGuest) && currentView === 'history' && <FocusHistoryView onBack={() => setCurrentView('home')} user={user || ({ uid: 'guest' } as any)} settings={settings} />}
           {(user || isGuest) && currentView === 'about' && <AboutPage onBack={() => setCurrentView('settings')} />}
           {(user || isGuest) && currentView === 'app-info' && <AppInfoPage onBack={() => setCurrentView('settings')} user={user || ({ uid: 'guest' } as any)} />}
           {(user || isGuest) && currentView === 'privacy' && <PrivacyPolicyPage onBack={() => setCurrentView('settings')} />}
@@ -1004,8 +1331,9 @@ export default function App() {
           {(user || isGuest) && currentView === 'blueprint' && <BlueprintPage onBack={() => setCurrentView('settings')} />}
         </AnimatePresence>
 
-        {(user || isGuest) && !showSplash && <BottomNav />}
-      </motion.div>
+          {(user || isGuest) && !showSplash && <BottomNav />}
+        </>
+      )}
     </div>
   );
 }
@@ -1263,32 +1591,149 @@ const TaskView = ({ onBack, user }: { onBack: () => void, user: FirebaseUser }) 
   const [newTask, setNewTask] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
 
+  const isArchived = (task: Task) => {
+    if (!task.completed) return false;
+    const compTime = task.completedAt ? new Date(task.completedAt).getTime() : new Date(task.createdAt).getTime();
+    const now = Date.now();
+    const dayInMs = 24 * 60 * 60 * 1000;
+    return now - compTime >= dayInMs;
+  };
+
   useEffect(() => {
-    const q = query(collection(db, 'users', user.uid, 'tasks'), orderBy('priority', 'desc'), orderBy('createdAt', 'desc'));
+    if (user.uid === 'guest') {
+      const savedTasks = localStorage.getItem('vox_guest_tasks');
+      if (savedTasks) {
+        try {
+          const parsed = JSON.parse(savedTasks) as Task[];
+          // Filter out archived ones for the active view
+          setTasks(parsed.filter(t => !isArchived(t)));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      return;
+    }
+    const q = query(collection(db, 'users', user.uid, 'tasks'), orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
-      setTasks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task)));
+      let fetchedTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+      
+      // Filter out tasks completed more than 24h ago (Auto-Archive)
+      fetchedTasks = fetchedTasks.filter(t => !isArchived(t));
+
+      const savedOrder = localStorage.getItem(`vox_task_order_${user.uid}`);
+      if (savedOrder) {
+        try {
+          const orderArr = JSON.parse(savedOrder) as string[];
+          const orderMap = new Map(orderArr.map((id, index) => [id, index]));
+          fetchedTasks.sort((a, b) => {
+            const indexA = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
+            const indexB = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
+            if (indexA === indexB) {
+              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            }
+            return indexA - indexB;
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setTasks(fetchedTasks);
     });
   }, [user]);
+
+  const handleReorderTasks = (newTasks: Task[]) => {
+    setTasks(newTasks);
+    const orderArr = newTasks.map(t => t.id);
+    localStorage.setItem(`vox_task_order_${user.uid}`, JSON.stringify(orderArr));
+    
+    if (user.uid === 'guest') {
+      localStorage.setItem('vox_guest_tasks', JSON.stringify(newTasks));
+    }
+  };
 
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTask.trim()) return;
-    await addDoc(collection(db, 'users', user.uid, 'tasks'), {
+    
+    const taskData = {
       userId: user.uid,
       title: newTask,
       completed: false,
       createdAt: new Date().toISOString(),
       priority: priority
-    });
+    };
+
+    if (user.uid === 'guest') {
+      const savedTasks = localStorage.getItem('vox_guest_tasks');
+      let allTasks: Task[] = [];
+      if (savedTasks) {
+        try {
+          allTasks = JSON.parse(savedTasks);
+        } catch (e) {}
+      }
+      const newTaskObj: Task = { id: `task-${Date.now()}`, ...taskData };
+      const updatedAll = [newTaskObj, ...allTasks];
+      localStorage.setItem('vox_guest_tasks', JSON.stringify(updatedAll));
+      setTasks(updatedAll.filter(t => !isArchived(t)));
+      localStorage.setItem('vox_task_order_guest', JSON.stringify(updatedAll.filter(t => !isArchived(t)).map(t => t.id)));
+      setNewTask('');
+      return;
+    }
+
+    const docRef = await addDoc(collection(db, 'users', user.uid, 'tasks'), taskData);
+    const savedOrder = localStorage.getItem(`vox_task_order_${user.uid}`);
+    let orderArr: string[] = [];
+    if (savedOrder) {
+      try {
+        orderArr = JSON.parse(savedOrder);
+      } catch (e) {}
+    }
+    orderArr = [docRef.id, ...orderArr];
+    localStorage.setItem(`vox_task_order_${user.uid}`, JSON.stringify(orderArr));
     setNewTask('');
   };
 
   const toggleTask = async (task: Task) => {
+    const isNowCompleted = !task.completed;
+    const completedAt = isNowCompleted ? new Date().toISOString() : null;
+    
+    try {
+      if (navigator.vibrate) {
+        navigator.vibrate(12); // Standard haptic vibration
+      }
+    } catch (e) {}
+
+    if (user.uid === 'guest') {
+      const savedTasks = localStorage.getItem('vox_guest_tasks');
+      let allTasks: Task[] = [];
+      if (savedTasks) {
+        try {
+          allTasks = JSON.parse(savedTasks);
+        } catch (e) {}
+      }
+      const updatedAll = allTasks.map(t => t.id === task.id ? { ...t, completed: isNowCompleted, completedAt } : t);
+      localStorage.setItem('vox_guest_tasks', JSON.stringify(updatedAll));
+      setTasks(updatedAll.filter(t => !isArchived(t)));
+      return;
+    }
     const taskRef = doc(db, 'users', user.uid, 'tasks', task.id);
-    await updateDoc(taskRef, { completed: !task.completed });
+    await updateDoc(taskRef, { completed: isNowCompleted, completedAt });
   };
 
   const deleteTask = async (id: string) => {
+    if (user.uid === 'guest') {
+      const savedTasks = localStorage.getItem('vox_guest_tasks');
+      let allTasks: Task[] = [];
+      if (savedTasks) {
+        try {
+          allTasks = JSON.parse(savedTasks);
+        } catch (e) {}
+      }
+      const updatedAll = allTasks.filter(t => t.id !== id);
+      localStorage.setItem('vox_guest_tasks', JSON.stringify(updatedAll));
+      setTasks(tasks.filter(t => t.id !== id));
+      return;
+    }
     await deleteDoc(doc(db, 'users', user.uid, 'tasks', id));
   };
 
@@ -1339,36 +1784,56 @@ const TaskView = ({ onBack, user }: { onBack: () => void, user: FirebaseUser }) 
         </div>
       </form>
 
-      <div className="flex-1 overflow-y-auto space-y-6 scrollbar-hide">
+      <Reorder.Group axis="y" values={tasks} onReorder={handleReorderTasks} className="flex-1 overflow-y-auto space-y-4 scrollbar-hide py-2">
         {tasks.map(task => (
-           <motion.div 
-            layout
-            key={task.id} 
-            className="flex items-center gap-3 group"
-          >
-            <button 
-              onClick={() => toggleTask(task)}
-              className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${task.completed ? 'bg-black border-black' : 'border-gray-300'}`}
+          <Reorder.Item key={task.id} value={task}>
+            <motion.div 
+              layout
+              animate={task.completed ? { x: [0, -1.5, 1.5, -1, 1, 0] } : {}}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="flex items-center gap-3 group bg-transparent hover:bg-gray-50/50 dark:hover:bg-white/5 p-3 rounded-2xl border border-transparent hover:border-black/5 dark:hover:border-white/5 transition-all cursor-grab active:cursor-grabbing"
             >
-              {task.completed && <ArrowRight size={12} className="text-white" />}
-            </button>
-            <div className="flex-1 flex flex-col">
-              <span className={`text-sm ${task.completed ? 'line-through opacity-30 text-gray-500' : ''}`}>
-                {task.title}
-              </span>
-              {!task.completed && (
-                <div className="flex items-center gap-1 mt-0.5">
-                  <Flag size={8} className={priorityColors[task.priority]} fill="currentColor" />
-                  <span className={`text-[8px] uppercase tracking-widest font-bold ${priorityColors[task.priority]}`}>{task.priority}</span>
-                </div>
-              )}
-            </div>
-            <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
-              <Trash2 size={14} />
-            </button>
-          </motion.div>
+              <div className="text-gray-300 dark:text-gray-700 group-hover:text-gray-400 dark:group-hover:text-gray-500 transition-colors">
+                <MoreVertical size={16} className="cursor-grab" />
+              </div>
+              <button 
+                onClick={() => toggleTask(task)}
+                className={`w-5 h-5 rounded border flex items-center justify-center transition-all duration-300 relative overflow-hidden haptic-click-feedback
+                  ${task.completed ? 'bg-black border-black/80 scale-105 shadow-sm' : 'border-gray-300 hover:border-gray-400'}`}
+              >
+                <AnimatePresence initial={false}>
+                  {task.completed && (
+                    <motion.div
+                      key="checkmark"
+                      initial={{ scale: 0, opacity: 0, rotate: -20 }}
+                      animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 15 }}
+                      className="flex items-center justify-center w-full h-full"
+                    >
+                      <ArrowRight size={12} className="text-white" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </button>
+              <div className="flex-1 flex flex-col">
+                <span className={`text-sm ${task.completed ? 'line-through opacity-30 text-gray-500' : ''}`}>
+                  {task.title}
+                </span>
+                {!task.completed && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <Flag size={8} className={priorityColors[task.priority]} fill="currentColor" />
+                    <span className={`text-[8px] uppercase tracking-widest font-bold ${priorityColors[task.priority]}`}>{task.priority}</span>
+                  </div>
+                )}
+              </div>
+              <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all">
+                <Trash2 size={14} />
+              </button>
+            </motion.div>
+          </Reorder.Item>
         ))}
-      </div>
+      </Reorder.Group>
     </motion.div>
   );
 };
@@ -1378,7 +1843,139 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
   const [isActive, setIsActive] = useState(false);
   const [mode, setMode] = useState<'work' | 'break'>('work');
   const [ambientEnabled, setAmbientEnabled] = useState(false);
+  const [ambientType, setAmbientType] = useState<'rain' | 'white'>('rain');
+  const [showFinishVisual, setShowFinishVisual] = useState(false);
   const [coachingMessage, setCoachingMessage] = useState('Initialize your flow.');
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
+
+  const audioCtxRef = React.useRef<AudioContext | null>(null);
+  const sourceNodeRef = React.useRef<AudioBufferSourceNode | null>(null);
+  const filterNodeRef = React.useRef<BiquadFilterNode | null>(null);
+  const gainNodeRef = React.useRef<GainNode | null>(null);
+
+  React.useEffect(() => {
+    let unmounted = false;
+
+    const stopAmbientAudio = () => {
+      try {
+        if (sourceNodeRef.current) {
+          sourceNodeRef.current.stop();
+          sourceNodeRef.current.disconnect();
+          sourceNodeRef.current = null;
+        }
+        if (filterNodeRef.current) {
+          filterNodeRef.current.disconnect();
+          filterNodeRef.current = null;
+        }
+        if (gainNodeRef.current) {
+          gainNodeRef.current.disconnect();
+          gainNodeRef.current = null;
+        }
+        if (audioCtxRef.current) {
+          audioCtxRef.current.close();
+          audioCtxRef.current = null;
+        }
+      } catch (err) {
+        console.error("Ambient noise stop failed:", err);
+      }
+    };
+
+    const startAmbientAudio = () => {
+      try {
+        stopAmbientAudio();
+
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
+        audioCtxRef.current = ctx;
+
+        const bufferSize = ctx.sampleRate * 2;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        if (ambientType === 'white') {
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+        } else {
+          // Rain / pink noise approximation
+          let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            data[i] = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
+            data[i] *= 0.11;
+            b6 = white * 0.115926;
+          }
+        }
+
+        if (unmounted) return;
+
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+        sourceNodeRef.current = source;
+
+        const filter = ctx.createBiquadFilter();
+        filterNodeRef.current = filter;
+
+        const gain = ctx.createGain();
+        gainNodeRef.current = gain;
+
+        if (ambientType === 'rain') {
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(650, ctx.currentTime);
+          gain.gain.setValueAtTime(0.32, ctx.currentTime);
+        } else {
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1100, ctx.currentTime);
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        }
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        source.start(0);
+      } catch (err) {
+        console.error("Ambient noise start failed:", err);
+      }
+    };
+
+    if (isActive && ambientEnabled) {
+      startAmbientAudio();
+    } else {
+      stopAmbientAudio();
+    }
+
+    return () => {
+      unmounted = true;
+      stopAmbientAudio();
+    };
+  }, [isActive, ambientEnabled, ambientType]);
+
+  useEffect(() => {
+    if (user.uid === 'guest') {
+      const savedSessions = localStorage.getItem('vox_guest_sessions');
+      if (savedSessions) {
+        try {
+          setSessions(JSON.parse(savedSessions));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      return;
+    }
+    const qS = query(collection(db, 'users', user.uid, 'sessions'), orderBy('startTime', 'desc'), limit(50));
+    return onSnapshot(qS, (snapshot) => {
+      setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FocusSession)));
+    });
+  }, [user]);
 
   const coachingPrompts = [
     "Focus is a muscle. Train it.",
@@ -1401,20 +1998,72 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
       }, 1000);
     } else if (timeLeft === 0) {
       setIsActive(false);
+      
+      // Synthesize elegant chime-chord when timer hits 0
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+          const tCtx = new AudioContextClass();
+          const tNow = tCtx.currentTime;
+          [220, 330, 440, 550].forEach((f, idx) => {
+            const osc = tCtx.createOscillator();
+            const gain = tCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, tNow);
+            gain.gain.setValueAtTime(0, tNow);
+            gain.gain.linearRampToValueAtTime(0.12, tNow + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, tNow + 1.2 + idx * 0.2);
+            osc.connect(gain);
+            gain.connect(tCtx.destination);
+            osc.start(tNow);
+            osc.stop(tNow + 2.0);
+          });
+        }
+      } catch (audioErr) {
+        console.error("Failed to play flow completion chime", audioErr);
+      }
+
+      // Haptic vibration feedback
+      try {
+        if (navigator.vibrate) {
+          navigator.vibrate([100, 50, 100, 50, 200]);
+        }
+      } catch (vibErr) {}
+
+      // Open visual alarm overlay
+      setShowFinishVisual(true);
+
       handleSessionComplete();
     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
   const handleSessionComplete = async () => {
-    await addDoc(collection(db, 'users', user.uid, 'sessions'), {
+    const sessionData = {
       userId: user.uid,
       startTime: new Date(Date.now() - (mode === 'work' ? (settings?.focusDuration || 25) : (settings?.breakDuration || 5)) * 60000).toISOString(),
       endTime: new Date().toISOString(),
       durationMinutes: mode === 'work' ? (settings?.focusDuration || 25) : (settings?.breakDuration || 5),
       type: mode,
       completed: true
-    });
+    };
+
+    if (user.uid === 'guest') {
+      const savedSessions = localStorage.getItem('vox_guest_sessions');
+      let parsedSessions: FocusSession[] = [];
+      if (savedSessions) {
+        try {
+          parsedSessions = JSON.parse(savedSessions);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      const newSession: FocusSession = { id: `session-${Date.now()}`, ...sessionData };
+      const updatedSessions = [newSession, ...parsedSessions];
+      localStorage.setItem('vox_guest_sessions', JSON.stringify(updatedSessions));
+    } else {
+      await addDoc(collection(db, 'users', user.uid, 'sessions'), sessionData);
+    }
     
     const newMode = mode === 'work' ? 'break' : 'work';
     setMode(newMode);
@@ -1440,13 +2089,70 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const weeklyData = (() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const last7Days = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      return {
+        dateStr: d.toDateString(),
+        dayName: days[d.getDay()],
+        duration: 0
+      };
+    }).reverse();
+
+    sessions.forEach(session => {
+      if (!session.startTime || session.type !== 'work' || !session.completed) return;
+      const sessionDate = new Date(session.startTime).toDateString();
+      const match = last7Days.find(day => day.dateStr === sessionDate);
+      if (match) {
+        match.duration += session.durationMinutes || 0;
+      }
+    });
+
+    return last7Days.map(day => ({
+      name: day.dayName,
+      Duration: day.duration
+    }));
+  })();
+
+  const isDark = settings?.theme === 'monochrome-dark';
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex-1 flex flex-col items-center justify-between p-8 bg-black text-white overflow-hidden relative"
+      className={`flex-1 flex flex-col items-center justify-start px-5 py-4 overflow-y-auto scrollbar-hide relative transition-colors duration-300 ${isDark ? 'bg-[#0a0a0c] text-white' : 'bg-[#fcfcfa] text-slate-800'}`}
     >
+      {/* Visual Completion Alert Banner */}
+      <AnimatePresence>
+        {showFinishVisual && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className={`absolute top-4 left-4 right-4 z-50 p-5 rounded-[1.75rem] border flex flex-col gap-2.5 shadow-xl transition-all
+              ${isDark ? 'bg-zinc-900 text-white border-white/10 shadow-black/60' : 'bg-white text-slate-800 border-slate-200/80 shadow-slate-100'}`}
+          >
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={18} className="text-green-500" />
+              <span className="text-[10px] uppercase tracking-[0.3em] font-black leading-none">Flow Complete</span>
+            </div>
+            <p className="text-[11px] opacity-75 font-serif leading-relaxed">
+              Your deep work sprint has successfully concluded. Your focus shield remains untethered. Take a deep breath.
+            </p>
+            <button
+              onClick={() => setShowFinishVisual(false)}
+              className={`mt-1.5 px-4 py-2 rounded-xl text-[9px] uppercase tracking-widest font-black transition-all
+                ${isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-slate-950 text-white hover:bg-slate-800'}`}
+            >
+              Acknowledge Block
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Breathing Ambient */}
       <AnimatePresence>
         {isActive && (
@@ -1454,7 +2160,7 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 pointer-events-none flex items-center justify-center"
+            className="absolute inset-x-0 top-0 bottom-0 pointer-events-none flex items-center justify-center min-h-[800px]"
           >
             {[...Array(3)].map((_, i) => (
               <motion.div 
@@ -1469,7 +2175,7 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
                   delay: i * 2,
                   ease: "easeInOut"
                 }}
-                className="absolute border border-white rounded-full"
+                className={`absolute border rounded-full ${isDark ? 'border-white' : 'border-slate-400'}`}
                 style={{ width: `${300 + i * 200}px`, height: `${300 + i * 200}px` }}
               />
             ))}
@@ -1477,11 +2183,11 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
         )}
       </AnimatePresence>
 
-      <div className="w-full flex items-center justify-between z-10">
-        <button onClick={onBack} className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors">
-          <ChevronLeft size={20} />
+      <div className="w-full flex items-center justify-between z-10 mb-6">
+        <button onClick={onBack} className={`p-2.5 rounded-xl transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'}`}>
+          <ChevronLeft size={18} />
         </button>
-        <div className="flex bg-white/5 p-1 rounded-2xl">
+        <div className={`flex p-1 rounded-2xl ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
            {(['work', 'break'] as const).map(m => (
              <button 
               key={m}
@@ -1491,7 +2197,7 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
                 setIsActive(false);
                 setCoachingMessage(m === 'work' ? 'Ready to build?' : 'Recharge and reset.');
               }}
-              className={`text-[9px] uppercase tracking-[0.2em] px-5 py-2 rounded-xl transition-all font-black ${mode === m ? 'bg-white text-black font-black' : 'opacity-30'}`}
+              className={`text-[9px] uppercase tracking-[0.2em] px-4 py-1.5 rounded-xl transition-all font-black ${mode === m ? (isDark ? 'bg-white text-black' : 'bg-slate-900 text-white') : 'opacity-40 text-current'}`}
              >
                {m}
              </button>
@@ -1500,31 +2206,31 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
         <div className="w-10" /> {/* Spacer */}
       </div>
 
-      <div className="text-center space-y-12 w-full z-10 py-12">
+      <div className="text-center space-y-6 w-full z-10 py-2">
         <div className="space-y-4">
-           <div className="flex items-center gap-4 justify-center bg-white/5 px-6 py-3 rounded-full border border-white/5">
+           <div className={`flex items-center gap-4 justify-center px-4 py-2 rounded-full border max-w-fit mx-auto ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-150/70 border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.01)]'}`}>
              <div className="flex flex-col items-center">
-               <span className="text-[8px] uppercase tracking-widest font-black opacity-30">Blocked</span>
-               <span className="text-xs font-black">42</span>
+               <span className="text-[8px] uppercase tracking-widest font-extrabold text-slate-500 dark:text-white/40 mb-0.5">Blocked</span>
+               <span className="text-xs font-black font-mono">42</span>
              </div>
-             <div className="w-px h-6 bg-white/10" />
+             <div className={`w-px h-5 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
              <div className="flex flex-col items-center">
-               <span className="text-[8px] uppercase tracking-widest font-black opacity-30">Shield</span>
-               <ShieldCheck size={14} className="text-green-500" />
+               <span className="text-[8px] uppercase tracking-widest font-extrabold text-slate-500 dark:text-white/40 mb-0.5">Shield</span>
+               <ShieldCheck size={12} className="text-green-500" />
              </div>
-             <div className="w-px h-6 bg-white/10" />
+             <div className={`w-px h-5 ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
              <div className="flex flex-col items-center">
-               <span className="text-[8px] uppercase tracking-widest font-black opacity-30">Status</span>
+               <span className="text-[8px] uppercase tracking-widest font-extrabold text-slate-500 dark:text-white/40 mb-0.5">Status</span>
                <span className="text-xs font-black">SOVEREIGN</span>
              </div>
            </div>
-           {isActive && <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ repeat: Infinity, duration: 3 }} className="text-[9px] uppercase tracking-[0.3em] font-black text-red-500">Distraction Firewall Engaged</motion.div>}
+           {isActive && <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ repeat: Infinity, duration: 3 }} className="text-[9px] uppercase tracking-[0.25em] font-black text-red-500 font-mono">Distraction Firewall Engaged</motion.div>}
         </div>
         
-        <div className="relative inline-block">
-          <h2 className="text-[11rem] md:text-[13rem] font-thin tracking-[-0.08em] leading-none select-none text-glow">
+        <div className="relative inline-block w-full">
+          <h2 className="text-[7.5rem] md:text-[8rem] font-extralight tracking-[-0.05em] leading-none select-none text-glow leading-none">
             {formatTime(timeLeft).split(':')[0]}
-            <span className="opacity-20">:</span>
+            <span className="opacity-25">:</span>
             {formatTime(timeLeft).split(':')[1]}
           </h2>
           <AnimatePresence mode="wait">
@@ -1533,7 +2239,7 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="text-xs uppercase tracking-[0.3em] font-black opacity-30 mt-8 min-h-[1em]"
+              className="text-[10px] uppercase tracking-[0.25em] font-extrabold text-slate-500 dark:text-white/40 mt-4 min-h-[1.5em] font-mono"
             >
               {coachingMessage}
             </motion.p>
@@ -1541,37 +2247,70 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
         </div>
       </div>
 
-      <div className="w-full flex-col flex items-center gap-12 z-10 pb-32">
-        <div className="flex items-center gap-8">
-           <button 
-            onClick={() => setAmbientEnabled(!ambientEnabled)}
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${ambientEnabled ? 'bg-white text-black border-white' : 'border-white/10 opacity-20'}`}
-          >
-            <Activity size={20} strokeWidth={1} />
-          </button>
+      <div className="w-full flex-col flex items-center gap-5 z-10 pb-6 mt-3">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex items-center gap-6">
+             <button 
+              onClick={() => setAmbientEnabled(!ambientEnabled)}
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all ${ambientEnabled ? (isDark ? 'bg-white text-black border-white' : 'bg-slate-900 text-white border-slate-900') : (isDark ? 'border-white/10 opacity-30 hover:opacity-100' : 'border-slate-200 opacity-60 hover:opacity-100 bg-slate-50')}`}
+              title="Toggle Deep Work Sounds"
+             >
+              <Activity size={18} strokeWidth={1.5} />
+            </button>
 
-          <button 
-            onClick={toggleTimer}
-            className={`w-28 h-28 rounded-full border-2 flex items-center justify-center group transition-all duration-700 shadow-2xl ${isActive ? 'bg-white border-white scale-110 shadow-white/10' : 'bg-transparent border-white hover:bg-white/5'}`}
-          >
-            {!isActive ? (
-               <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 4 }}>
-                <Plus size={32} strokeWidth={1} />
-               </motion.div>
-            ) : (
-               <div className="w-6 h-6 bg-black" />
+            <button 
+              onClick={toggleTimer}
+              className={`w-20 h-20 rounded-full border flex items-center justify-center group transition-all duration-700 shadow-xl
+                ${isActive 
+                  ? (isDark ? 'bg-white border-white scale-105 text-black' : 'bg-slate-950 border-slate-950 scale-105 text-white') 
+                  : (isDark ? 'bg-transparent border-white/30 text-white hover:bg-white/5' : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-50')}`}
+            >
+              {!isActive ? (
+                 <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 4 }}>
+                   <Plus size={24} strokeWidth={1.5} />
+                 </motion.div>
+              ) : (
+                 <div className={`w-4 h-4 rounded-sm ${isDark ? 'bg-black' : 'bg-white'}`} />
+              )}
+            </button>
+
+            <button 
+              onClick={resetTimer}
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center border transition-all ${isDark ? 'border-white/10 opacity-30 hover:opacity-100' : 'border-slate-200 opacity-60 hover:opacity-100 bg-slate-50'}`}
+              title="Reset Sequence"
+            >
+              <RotateCcw size={18} strokeWidth={1.5} />
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {ambientEnabled && (
+              <motion.div 
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                className={`flex items-center gap-1 p-1 border rounded-full ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-100 border-slate-200/50'}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setAmbientType('rain')}
+                  className={`text-[8px] uppercase tracking-[0.15em] px-3 py-1 rounded-full font-extrabold transition-all ${ambientType === 'rain' ? (isDark ? 'bg-white text-black' : 'bg-slate-900 text-white') : 'opacity-40 text-current'}`}
+                >
+                  Rain Forest
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAmbientType('white')}
+                  className={`text-[8px] uppercase tracking-[0.15em] px-3 py-1 rounded-full font-extrabold transition-all ${ambientType === 'white' ? (isDark ? 'bg-white text-black' : 'bg-slate-900 text-white') : 'opacity-40 text-current'}`}
+                >
+                  White Noise
+                </button>
+              </motion.div>
             )}
-          </button>
-
-          <button 
-            onClick={resetTimer}
-            className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/10 opacity-20 hover:opacity-100 transition-all"
-          >
-            <RotateCcw size={20} strokeWidth={1} />
-          </button>
+          </AnimatePresence>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex gap-2">
           {[15, 30, 45, 60, 90].map(mins => (
             <button 
               key={mins}
@@ -1580,23 +2319,96 @@ const FocusView = ({ onBack, user, settings }: { onBack: () => void, user: Fireb
                 setIsActive(true);
                 setCoachingMessage(`Setting ${mins}m block.`);
               }}
-              className="text-[9px] uppercase tracking-[0.2em] px-4 py-2 border border-white/5 rounded-full hover:bg-white/10 transition-all font-black"
+              className={`text-[8px] uppercase tracking-[0.15em] px-3.5 py-1.5 border rounded-full transition-all font-black
+                ${isDark ? 'border-white/5 hover:bg-white/5' : 'border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100'}`}
             >
               {mins}m
             </button>
           ))}
         </div>
       </div>
+
+      {/* Visual Weekly Focus Chart Section */}
+      <div className={`w-full max-w-sm mt-8 pt-8 border-t space-y-4 pb-20 z-10 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className={`text-[10px] uppercase tracking-[0.2em] font-extrabold ${isDark ? 'text-white/60' : 'text-slate-500'}`}>Weekly Focus Summary</h3>
+            <p className={`text-[8px] uppercase tracking-wider font-mono ${isDark ? 'text-white/30' : 'text-slate-400'}`}>Completed work sessions</p>
+          </div>
+          <span className={`text-[8px] font-mono uppercase tracking-widest ${isDark ? 'text-white/30' : 'text-slate-400 font-bold'}`}>MINUTES SELECT</span>
+        </div>
+        
+        <div className={`border rounded-[1.75rem] p-4 h-[160px] w-full flex items-center justify-center relative
+          ${isDark ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200/80 shadow-[0_3px_12px_rgba(0,0,0,0.01)]'}`}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+              <XAxis 
+                dataKey="name" 
+                stroke={isDark ? "rgba(255,255,255,0.4)" : "rgba(100,116,139,0.7)"} 
+                fontSize={8} 
+                tickLine={false} 
+                axisLine={false}
+                dy={10} 
+                fontWeight="bold"
+              />
+              <Tooltip 
+                cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)' }} 
+                contentStyle={{ 
+                  backgroundColor: isDark ? '#121212' : '#ffffff', 
+                  borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0', 
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  color: isDark ? '#fff' : '#0f172a',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                }} 
+                labelStyle={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#64748b', fontWeight: 'bold' }}
+              />
+              <Bar 
+                dataKey="Duration" 
+                fill={isDark ? "#ffffff" : "#0f172a"} 
+                radius={[4, 4, 0, 0]} 
+                barSize={16}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex justify-between items-center px-1">
+          <span className={`text-[8.5px] uppercase tracking-wider font-mono font-medium ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Today: {weeklyData[6]?.Duration || 0}m logged</span>
+          <span className={`text-[8.5px] uppercase tracking-wider font-mono font-medium ${isDark ? 'text-white/40' : 'text-slate-500'}`}>Weekly Peak: {Math.max(...weeklyData.map(d => d.Duration), 0)}m</span>
+        </div>
+      </div>
     </motion.div>
   );
 };
 
-const FocusHistoryView = ({ onBack, user }: { onBack: () => void, user: FirebaseUser }) => {
+const FocusHistoryView = ({ onBack, user, settings }: { onBack: () => void, user: FirebaseUser, settings: UserSettings | null }) => {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
   const [activeTab, setActiveTab] = useState<'sessions' | 'missions'>('sessions');
 
   useEffect(() => {
+    if (user.uid === 'guest') {
+      const savedSessions = localStorage.getItem('vox_guest_sessions');
+      if (savedSessions) {
+        try {
+          setSessions(JSON.parse(savedSessions));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      const savedTasks = localStorage.getItem('vox_guest_tasks');
+      if (savedTasks) {
+        try {
+          const parsedTasks = JSON.parse(savedTasks) as Task[];
+          setCompletedTasks(parsedTasks.filter(t => t.completed));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      return;
+    }
+
     const qS = query(collection(db, 'users', user.uid, 'sessions'), orderBy('startTime', 'desc'), limit(50));
     const unsubS = onSnapshot(qS, (snapshot) => {
       setSessions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FocusSession)));
@@ -1610,30 +2422,32 @@ const FocusHistoryView = ({ onBack, user }: { onBack: () => void, user: Firebase
     return () => { unsubS(); unsubT(); };
   }, [user]);
 
+  const isDark = settings?.theme === 'monochrome-dark';
+
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      className="flex-1 flex flex-col p-8 bg-black text-white h-full overflow-hidden"
+      exit={{ opacity: 0, x: 10 }}
+      className={`flex-1 flex flex-col px-5 py-4 h-full overflow-hidden transition-colors duration-300 ${isDark ? 'bg-[#0a0a0c] text-white' : 'bg-[#fcfcfa] text-slate-800'}`}
     >
-       <div className="flex items-center gap-4 mb-8">
-        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
-          <ChevronLeft size={20} />
+       <div className="flex items-center gap-3 mb-5">
+        <button onClick={onBack} className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-800'}`}>
+          <ChevronLeft size={18} />
         </button>
-        <h2 className="text-2xl tracking-tighter uppercase font-light">Memory Bank</h2>
+        <h2 className="text-xl tracking-tighter uppercase font-light">Memory Bank</h2>
       </div>
 
-      <div className="flex bg-white/5 p-1 rounded-2xl mb-8">
+      <div className={`flex p-1 rounded-2xl mb-5 ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
         <button 
           onClick={() => setActiveTab('sessions')}
-          className={`flex-1 py-3 rounded-xl text-[10px] uppercase font-bold tracking-widest transition-all ${activeTab === 'sessions' ? 'bg-white text-black' : 'opacity-40'}`}
+          className={`flex-1 py-1.5 rounded-xl text-[9px] uppercase font-bold tracking-widest transition-all ${activeTab === 'sessions' ? (isDark ? 'bg-white text-black font-black' : 'bg-slate-900 text-white font-black') : (isDark ? 'opacity-40 text-current' : 'opacity-50 text-current')}`}
         >
           Flow Logs
         </button>
         <button 
           onClick={() => setActiveTab('missions')}
-          className={`flex-1 py-3 rounded-xl text-[10px] uppercase font-bold tracking-widest transition-all ${activeTab === 'missions' ? 'bg-white text-black' : 'opacity-40'}`}
+          className={`flex-1 py-1.5 rounded-xl text-[9px] uppercase font-bold tracking-widest transition-all ${activeTab === 'missions' ? (isDark ? 'bg-white text-black font-black' : 'bg-slate-900 text-white font-black') : (isDark ? 'opacity-40 text-current' : 'opacity-50 text-current')}`}
         >
           Archive
         </button>
@@ -1642,17 +2456,17 @@ const FocusHistoryView = ({ onBack, user }: { onBack: () => void, user: Firebase
       <div className="flex-1 overflow-y-auto space-y-6 scrollbar-hide pb-24">
         {activeTab === 'sessions' ? (
           <>
-            {sessions.length === 0 && <p className="text-xs uppercase tracking-widest opacity-30 text-center pt-20">No flow data.</p>}
+            {sessions.length === 0 && <p className={`text-xs uppercase tracking-widest opacity-30 text-center pt-20 ${isDark ? 'text-white' : 'text-slate-500'}`}>No flow data.</p>}
             {sessions.map(s => (
-              <div key={s.id} className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div key={s.id} className={`flex items-center justify-between border-b pb-4 ${isDark ? 'border-white/15' : 'border-slate-200/60'}`}>
                 <div>
-                  <p className="text-sm font-medium">{new Date(s.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
-                  <p className="text-[10px] uppercase tracking-widest opacity-30">
+                  <p className="text-sm font-semibold">{new Date(s.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
+                  <p className={`text-[10px] uppercase tracking-widest font-medium ${isDark ? 'text-white/40' : 'text-slate-500'}`}>
                     {new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {s.type}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xl font-thin">{s.durationMinutes}m</span>
+                  <span className="text-xl font-light">{s.durationMinutes}m</span>
                 </div>
               </div>
             ))}
@@ -1678,7 +2492,7 @@ const FocusHistoryView = ({ onBack, user }: { onBack: () => void, user: Firebase
   );
 };
 
-const VoxAssistant = ({ onBack }: { onBack: () => void }) => {
+const VoxAssistant = ({ onBack, settings }: { onBack: () => void, settings?: UserSettings | null }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'vox', text: string }[]>([
     { role: 'vox', text: "Hello. I am Vox. What is our focus today?" }
   ]);
@@ -1714,57 +2528,58 @@ const VoxAssistant = ({ onBack }: { onBack: () => void }) => {
     }
   };
 
+  const isDark = settings?.theme === 'monochrome-dark';
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
-      className="flex-1 flex flex-col p-8 bg-gray-50 text-black h-full"
+      exit={{ opacity: 0, y: 15 }}
+      className={`flex-1 flex flex-col px-5 py-4 h-full overflow-hidden transition-colors duration-300 ${isDark ? 'bg-[#0a0a0c] text-white' : 'bg-[#fcfcfa] text-slate-800'}`}
     >
-      <div className="flex items-center gap-4 mb-2">
-        <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-gray-200 transition-colors">
-          <ChevronLeft size={20} />
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={onBack} className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-100 text-slate-800'}`}>
+          <ChevronLeft size={18} />
         </button>
         <div className="flex flex-col">
-          <h2 className="text-sm font-bold tracking-widest uppercase">Vox Assistant</h2>
-          <span className="text-[8px] uppercase tracking-widest opacity-40">System Active</span>
+          <h2 className="text-xs font-bold tracking-widest uppercase">Vox Assistant</h2>
+          <span className="text-[8px] uppercase tracking-widest opacity-40 font-mono">System Active</span>
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto pt-8 space-y-8 pb-4 scrollbar-hide">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-6 pb-4 scrollbar-hide">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] ${m.role === 'user' ? 'bg-black text-white p-4 rounded-2xl rounded-tr-none' : 'text-black'}`}>
-              <p className="text-sm leading-relaxed">{m.text}</p>
+            <div className={`max-w-[85%] p-3.5 rounded-2xl ${m.role === 'user' ? `rounded-tr-none ${isDark ? 'bg-zinc-800/80 border border-white/5 text-white' : 'bg-slate-100 border border-slate-200 text-slate-800'}` : `rounded-tl-none ${isDark ? 'text-white' : 'text-slate-800'}`}`}>
+              <p className="text-xs leading-relaxed">{m.text}</p>
             </div>
           </div>
         ))}
-        {isTyping && <div className="text-[10px] uppercase tracking-widest opacity-40 animate-pulse">Calculating...</div>}
+        {isTyping && <div className="text-[8px] font-mono uppercase tracking-widest opacity-40 animate-pulse">Calculating...</div>}
       </div>
 
-      <form onSubmit={sendMessage} className="mt-4 flex gap-2 relative">
+      <form onSubmit={sendMessage} className="mt-3 flex gap-2 relative pb-20">
         <input 
           type="text" 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Query Vox..."
-          className="w-full bg-white border border-gray-200 rounded-full px-6 py-4 text-sm focus:outline-none focus:border-black transition-colors shadow-sm"
+          className={`w-full rounded-2xl border px-5 py-3 text-xs focus:outline-none transition-colors shadow-sm ${isDark ? 'bg-white/5 border-white/10 text-white placeholder-white/35 focus:border-white/30' : 'bg-slate-50 border-slate-200/80 text-slate-800 focus:border-slate-400 placeholder-slate-400 font-medium'}`}
         />
-        <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:opacity-50 transition-opacity">
-          <Send size={18} />
+        <button type="submit" className={`absolute right-4 top-1/2 -translate-y-[calc(50%+10px)] p-2 hover:scale-105 transition-all ${isDark ? 'text-white/60 hover:text-white' : 'text-slate-500 hover:text-slate-800'}`}>
+          <Send size={16} />
         </button>
       </form>
     </motion.div>
   );
 };
 
-const SettingsView = ({ onBack, user, settings, setView, createFolder }: { onBack: () => void, user: FirebaseUser, settings: UserSettings | null, setView: (v: View) => void, createFolder: (ids: string[]) => void }) => {
+const SettingsView = ({ onBack, user, settings, setView, createFolder, onUpdateSettings, onSignOut }: { onBack: () => void, user: FirebaseUser, settings: UserSettings | null, setView: (v: View) => void, createFolder: (ids: string[]) => void, onUpdateSettings: (updates: Partial<UserSettings>) => Promise<void>, onSignOut: () => void }) => {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [selectedFolderApps, setSelectedFolderApps] = useState<string[]>([]);
   
   const updateSetting = async (key: string, value: any) => {
-    const docRef = doc(db, 'users', user.uid, 'settings', 'global');
-    await updateDoc(docRef, { [key]: value });
+    await onUpdateSettings({ [key]: value });
   };
 
   const updateIdentity = async (appId: string, type: 'name' | 'icon', value: string) => {
@@ -2190,7 +3005,7 @@ const SectionHeader = ({ title, theme }: { title: string, theme: string | undefi
 
         <div className="pt-20">
           <button 
-            onClick={() => auth.signOut()}
+            onClick={onSignOut}
             className="text-xs uppercase tracking-widest text-red-500 hover:opacity-50 transition-opacity"
           >
             Decommission Account
